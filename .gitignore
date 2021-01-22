@@ -2,3 +2,5 @@
 *.cmo
 client
 server
+IntPairSet
+test

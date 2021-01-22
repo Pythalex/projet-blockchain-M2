@@ -1,7 +1,21 @@
 open Unix
 
+(* network variables *)
 let ip = inet_addr_loopback
-let port = 8000
+let server_port = ref 0
+let connect_to_port = ref 0
+
+let set_server_port port = server_port := port
+
+let speclist = [
+  ("-n", Arg.Int (set_server_port), "Sets maximum number of files to list");
+]
+
+let usage_msg = "Super bitcoin miner";;
+
+Arg.parse speclist print_endline usage_msg;
+
+
 let addr = ADDR_INET(ip,port)
 
 (* création de la socket IPv4, TCP *)
