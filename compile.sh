@@ -1,2 +1,0 @@
-source compile_client.sh
-source compile_server.sh
