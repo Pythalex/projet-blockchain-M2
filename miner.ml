@@ -27,6 +27,7 @@ type message =
   | NetworkMap of IPPortSet.t
   | NetworkNewNode of inet_addr * int
   | NetworkDeletedNode of inet_addr * int
+  | DisconnectMiner of inet_addr * int
 
 let message_literal msg =
   match msg with
@@ -34,6 +35,7 @@ let message_literal msg =
     | NetworkMap _ -> "NetworkMap"
     | NetworkNewNode _ -> "NetworkNewNode"
     | NetworkDeletedNode _ -> "NetworkDeletedNode"
+    | DisconnectMiner _ -> "DisconnectMiner"
 
 exception NotUnderstood of string
 exception NotImplemented
@@ -71,6 +73,11 @@ let connect_to_miner my_ip my_port miner_ip miner_port =
 let greet_new_miner miner_network server_ip server_port out_chan =
   output_value out_chan (NetworkMap (IPPortSet.add (server_ip, server_port) miner_network));
   flush out_chan
+
+
+let disconnect_from_network miner_network server_ip server_port =
+  print_endline "\nTo Implement : multi-thread with clean listening thread closing from \
+  this function."
 
 
 let share_new_miner miner_network new_ip new_port =
@@ -121,6 +128,10 @@ let main () =
   (* Option pour que la socket soit réutilisable *)
   setsockopt s SO_REUSEADDR true;
 
+  (* Clean disconnect *)
+  let disconnect_behavior signal = disconnect_from_network !miner_network server_ip !server_port in
+  Sys.set_signal Sys.sigint (Sys.Signal_handle (disconnect_behavior));
+
   bind s addr;
 
   Printf.printf "Listening on port %d...\n%!" !server_port;
@@ -149,6 +160,10 @@ let main () =
       | NetworkNewNode (ip, port) ->
           print_endline "Received new node.";
           miner_network := IPPortSet.add (ip, port) !miner_network
+
+      | DisconnectMiner (ip, port) ->
+          print_endline "Received disconnecting miner.";
+          miner_network := IPPortSet.remove (ip, port) !miner_network
 
       | _ -> ()
     );
