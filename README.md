@@ -40,3 +40,12 @@ notification de nouveau noeud.
 
 ![proof2](https://i.imgur.com/X0gJJuK.png)
 Exemple 2 : réseau non complet avec wallet
+
+## Deconnexion
+
+Les noeuds gèrent la deconnexion d'un noeud du réseau de façon silencieuse en le supprimant de leur ensemble.
+Ils ne notifient pas tous leur voisins de cette deconnexion.
+
+Remarque: Puisque pour le moment la seule communication est celle du maillage, il restera toujours au moins un noeud qui possède
+dans son réseau le noeud déconnecté. Le noeud se fait supprimer du réseau après l'envoi de l'ensemble au nouveau noeud, qui possèdera
+donc ce noeud mort.
