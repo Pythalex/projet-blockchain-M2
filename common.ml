@@ -91,14 +91,15 @@ let message_literal msg =
   Adds the message to the set of received messages and returns the new set  
 *)
 let add_message received_messages msg =
-  HashSet.add (Hashtbl.hash msg) received_messages
+  let hash = Hashtbl.hash (Marshal.to_string msg []) in
+  HashSet.add hash received_messages
 
 (*
   Function: already_received_message
   Indicates if the given message exists in the hash table of received messages
 *)
 let already_received_message received_messages msg =
-  let hash_msg = Hashtbl.hash msg in
+  let hash_msg = Hashtbl.hash (Marshal.to_string msg []) in
   let is_msg m = m = hash_msg in
   HashSet.exists is_msg received_messages
 
@@ -124,7 +125,6 @@ let only_miner_filter network =
     match nodetype with Miner -> true | Wallet -> false
   in
   let filtered = NodeSet.filter is_miner network in
-  print_NodeSet filtered;
   filtered
 
 (**
@@ -136,7 +136,19 @@ let only_wallet_filter network =
   in
   NodeSet.filter is_wallet network
 
+(*
+    Function: broadcast
+    Broadcast a message to the given network.
+
+    Arguments: 
+      network, the node set
+      msg, the object to send
+
+    Returns: the set of nodes that didn't respond
+*)
 let broadcast network msg =
+  let didnt_respond = ref NodeSet.empty in
+
   let share (nodetype, ip, port) =
     let addr = ADDR_INET (ip, port) in
     let s = socket PF_INET SOCK_STREAM 0 in
@@ -145,22 +157,52 @@ let broadcast network msg =
       (nodetype_literal nodetype)
       (string_of_inet_addr ip) port;
 
-    connect s addr;
-
-    let out_chan = out_channel_of_descr s in
-
-    output_value out_chan msg;
-    flush out_chan;
+    (* Try to broadcast to the node, remember if it doesn't respond *)
+    ( try
+        connect s addr;
+        let out_chan = out_channel_of_descr s in
+        output_value out_chan msg;
+        flush out_chan
+      with Unix_error (Unix.ECONNREFUSED, _, _) ->
+        didnt_respond := NodeSet.add (nodetype, ip, port) !didnt_respond );
 
     Unix.close s
   in
 
-  NodeSet.iter share network
+  NodeSet.iter share network;
+  !didnt_respond
 
-let share_new_node network (nodetype, new_ip, new_port) =
-  broadcast (only_miner_filter network) (nodetype, new_ip, new_port)
+(*
+  Function: share_new_node
+  Broadcast the node info to the miners of the network.
+  Wallets are not contacted.
 
-(** Connect to miner at given address and return miner network *)
+  Arguments: 
+    network, the node set
+    (nodetype, new_ip, new_port), the new node info
+  
+  Returns:
+    The set of nodes that didn't respond
+*)
+let share_new_node network nodetype new_ip new_port =
+  broadcast
+    (only_miner_filter network)
+    (NetworkNewNode (nodetype, new_ip, new_port))
+
+(*
+  Function: connect_to_miner
+  Connect to miner at given address and return miner network 
+
+  Arguments:
+    nodetype, the node type (miner | wallet)
+    my_ip, the current listening process ip
+    my_port, the current listening process port number
+    miner_ip, the remote miner ip
+    miner_port, the remote miner port
+
+  Returns:
+
+*)
 let connect_to_miner nodetype my_ip my_port miner_ip miner_port =
   let addr = ADDR_INET (miner_ip, miner_port) in
   let s = socket PF_INET SOCK_STREAM 0 in

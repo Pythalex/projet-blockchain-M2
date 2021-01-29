@@ -73,6 +73,8 @@ let main () =
 
   (* Main loop *)
   while true do
+    print_endline "--------------------------------";
+
     (* client socket *)
     let client_socket, client_addr = accept s in
     let client_ip, client_port = extract_ip_port_from_sockaddr client_addr in
@@ -98,17 +100,24 @@ let main () =
       match input_message with
       (* A new node asks to enter the network *)
       | Greetings (nodetype, ip, port) ->
-          let _a = Hashtbl.hash input_message in
+          Printf.printf "Greetings new %s@%s:%d.\n%!"
+            (nodetype_literal nodetype)
+            (string_of_inet_addr ip) port;
 
           (* Gives the network map to the new node *)
-          Printf.printf "Greetings new %s.\n%!" (nodetype_literal nodetype);
           greet_new_node !network mynodetype server_ip !server_port out_chan;
 
           (* Broadcast the new node id *)
           print_endline "Sharing new node to rest of the network.";
-          share_new_node !network (nodetype, ip, port);
+          let didnt_respond = share_new_node !network nodetype ip port in
+          (* mark own message as seen to ignore it when it echoes *)
+          received_messages :=
+            add_message !received_messages (NetworkNewNode (nodetype, ip, port));
 
           (* Update own network map *)
+          (* remove dead nodes *)
+          network := NodeSet.diff !network didnt_respond;
+          (* add new *)
           network := NodeSet.add (nodetype, ip, port) !network;
           print_new_network !network
       (* A new node has been registered in the network *)
@@ -116,7 +125,13 @@ let main () =
           Printf.printf "Received new node of type %s.\n%!"
             (nodetype_literal nodetype);
 
+          print_endline "Broadcasting new node";
+          let didnt_respond = share_new_node !network nodetype ip port in
+
           (* Update own network map *)
+          (* remove dead nodes *)
+          network := NodeSet.diff !network didnt_respond;
+          (* add new *)
           network := NodeSet.add (nodetype, ip, port) !network;
           print_new_network !network
       | _ -> () )
