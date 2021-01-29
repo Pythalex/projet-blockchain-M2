@@ -2,7 +2,7 @@
 
 ## Compilation
 
-`make`
+Dans le terminal: `make`
 
 ## Lancer un miner
 
@@ -27,7 +27,7 @@ Exemple:
 
 `./wallet -p 8001 --remote-ip "127.0.0.1" --remote-port 8000`
 
-## Gestion du maillage (exercice 1)
+## Gestion du maillage avec miner et wallet (exercice 1 et 2)
 
 Après connexion des trois miners, chacun obtient un ensemble des noeuds du réseau. Cette implémentation crée un graphe complet entre les miners,
 les wallets ne reçoivent cependant pas les nouveaux noeuds. 
