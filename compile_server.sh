@@ -1,1 +1,0 @@
-ocamlc -o server unix.cma server.ml
