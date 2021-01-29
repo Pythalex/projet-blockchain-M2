@@ -53,12 +53,6 @@ let main () =
   (* Option pour que la socket soit réutilisable *)
   setsockopt s SO_REUSEADDR true;
 
-  (* Clean disconnect *)
-  let disconnect_behavior signal =
-    disconnect_from_network !network server_ip !server_port
-  in
-  Sys.set_signal Sys.sigint (Sys.Signal_handle disconnect_behavior);
-
   bind s addr;
 
   Printf.printf "Listening on port %d...\n%!" !server_port;
