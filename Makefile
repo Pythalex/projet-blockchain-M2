@@ -1,10 +1,10 @@
-all: miner IPPortSet
+all: common miner 
 
-miner: miner.ml IPPortSet
-	ocamlc -o miner unix.cma IPPortSet.cmo miner.ml
+miner: miner.ml common
+	ocamlc -o miner unix.cma common.cmo miner.ml
 
-IPPortSet: IPPortSet.mli IPPortSet.ml
-	ocamlc -c IPPortSet.mli IPPortSet.ml
+common: common.ml
+	ocamlc -c unix.cma common.ml
 
 clean:
-	rm *.cmi *.cmo miner
+	rm *.cmi *.cmo miner 
