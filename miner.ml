@@ -27,6 +27,7 @@ let addr = ADDR_INET(ip,!port)
 (* création de la socket IPv4, TCP *)
 let s = socket PF_INET SOCK_STREAM 0
 
+(* Broadcast ip/port d'une nouvelle connexion *)
 let broadcast neighbors (ip1,port1)  =
  (* InetSet.iter   *)
   let broadcast_l (ip,port) = 
@@ -40,6 +41,7 @@ let broadcast neighbors (ip1,port1)  =
    Unix.close s in
    InetSet.iter broadcast_l neighbors
 
+(* Broadcast msg entrant d'un Wallet *)
 let broadcast_wallet neighbors msg  =
  (* InetSet.iter   *)
   let broadcast_lw (ip,port) = 
@@ -53,11 +55,13 @@ let broadcast_wallet neighbors msg  =
    Unix.close s in
    InetSet.iter broadcast_lw neighbors
 
+(* Envoi de la liste du noeud *)
 let send_list neighbors peer =
   let out_chan = out_channel_of_descr s in
   output_value out_chan neighbors;
   flush out_chan
 
+  (* Connexion à un noeud, envoi ip/port et réception d'un set network *)
 let connect_to_peer port1 = 
   let s = socket PF_INET SOCK_STREAM 0 in
   let addr_peer = ADDR_INET(ip,port1) in
@@ -73,19 +77,11 @@ let connect_to_peer port1 =
     neighbors :=  InetSet.union neighbors_received !neighbors ;
   | _ -> ()
   
-  (* let in_chan = in_channel_of_descr s in
-  let n = input_value in_chan in 
-  neighbors :=  InetSet.add (ip,port1) !neighbors;
-  neighbors :=  InetSet.union n !neighbors ;
-  print_set !neighbors *)
-  (* let r = input_line in_chan in
-  Format.printf "%s@." r  *)
-  (* receive_list () *)
+
 
 let () =
   (* Option pour que la socket soit réutilisable *)
   setsockopt s SO_REUSEADDR true;
-  (* Printf.printf "Port : %i" port; *)
   (* On branche la prise *)
   bind s addr;
 
@@ -94,11 +90,6 @@ let () =
   listen s 5;
   if !connect_to_port <> 0 then begin
   connect_to_peer !connect_to_port;
-  (* Printf.printf "Connecting to peer";
-  let out_chan = out_channel_of_descr s in
-  output_value out_chan addr;
-  flush out_chan;*)
-  (* receive_list ();  *)
   end;
 
   while true do

@@ -1,5 +1,5 @@
 open Unix
-
+(* Pour différencier entre wallet et mineur *)
 type message =
     | Walletmsg of string
 let ip = inet_addr_loopback;;
