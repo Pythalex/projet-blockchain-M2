@@ -10,4 +10,4 @@ common: common.ml
 	ocamlc -c unix.cma common.ml
 
 clean:
-	rm *.cmi *.cmo miner 
+	rm *.cmi *.cmo miner wallet

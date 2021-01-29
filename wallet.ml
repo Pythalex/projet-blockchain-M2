@@ -31,7 +31,7 @@ let network = ref NodeSet.empty
 
 let print_new_network network =
   print_endline "New network:";
-  printSet network
+  print_NodeSet network
 
 let main () =
   (* command argument check *)
@@ -48,7 +48,7 @@ let main () =
       connect_to_miner mynodetype server_ip !server_port !connect_to_ip
         !connect_to_port;
     Printf.printf "Réponse reçue de la part du miner distant\n%!";
-    printSet !network );
+    print_NodeSet !network );
 
   (* Option pour que la socket soit réutilisable *)
   setsockopt s SO_REUSEADDR true;
