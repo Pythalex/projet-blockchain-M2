@@ -2,9 +2,11 @@ open Unix
 open Commons
 (* adresse IP locale 127.0.0.1 *)
 type message =
+  | Walletmsg of string
   | Hail of inet_addr * int
   | NetworkMap of InetSet.t
   | Broadcast of inet_addr * int
+  | BroadcastWallet of string
 let neighbors = ref InetSet.empty
 
 let ip = inet_addr_of_string "127.0.0.1"
@@ -34,10 +36,22 @@ let broadcast neighbors (ip1,port1)  =
    connect s addr_peer;
    let out_chan = out_channel_of_descr s in
    output_value out_chan (Broadcast (ip1, port1));
-   flush out_chan in 
-   (* Unix.close s in *)
+   flush out_chan ;
+   Unix.close s in
    InetSet.iter broadcast_l neighbors
 
+let broadcast_wallet neighbors msg  =
+ (* InetSet.iter   *)
+  let broadcast_lw (ip,port) = 
+   Printf.printf("peer was sent this msg :  %s\n%!") msg ;
+   let s = socket PF_INET SOCK_STREAM 0 in
+   let addr_peer = ADDR_INET(ip,port) in
+   connect s addr_peer;
+   let out_chan = out_channel_of_descr s in
+   output_value out_chan (BroadcastWallet msg);
+   flush out_chan ;
+   Unix.close s in
+   InetSet.iter broadcast_lw neighbors
 
 let send_list neighbors peer =
   let out_chan = out_channel_of_descr s in
@@ -111,6 +125,9 @@ let () =
         (* Unix.close s; *)
       | Broadcast (ip_l,port_l) ->  Printf.printf("received new broadcast coords (%s, %d)\n%!") (string_of_inet_addr ip_l) port_l ;
          neighbors := InetSet.add (ip_l,port_l) !neighbors;
+      | Walletmsg msg -> Printf.printf("Wallet says %s %!") msg;
+        broadcast_wallet !neighbors msg;
+      | BroadcastWallet msg -> Printf.printf("Some wallet says %s %!") msg;
       | _ -> ()
       
       
