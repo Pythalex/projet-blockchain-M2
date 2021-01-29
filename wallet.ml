@@ -19,13 +19,13 @@ let speclist =
     ("--remote-port", Arg.Set_int connect_to_port, "Remote miner's port number");
   ]
 
-let usage_msg = "Super bitcoin miner"
+let usage_msg = "Super wallet"
 
 ;;
 Arg.parse speclist print_endline usage_msg
 
 (* application variables *)
-let mynodetype = Miner
+let mynodetype = Wallet
 
 let network = ref NodeSet.empty
 
@@ -35,7 +35,7 @@ let print_new_network network =
 
 let main () =
   (* command argument check *)
-  if !server_port = 0 then (
+  if !server_port = 0 || !connect_to_port = 0 then (
     Arg.usage speclist usage_msg;
     exit 0 );
 
@@ -45,7 +45,7 @@ let main () =
   (* Call miner if a port was given in argument *)
   if !connect_to_port <> 0 then (
     network :=
-      connect_to_miner Miner server_ip !server_port !connect_to_ip
+      connect_to_miner mynodetype server_ip !server_port !connect_to_ip
         !connect_to_port;
     Printf.printf "Réponse reçue de la part du miner distant\n%!";
     printSet !network );
@@ -78,20 +78,12 @@ let main () =
       client_port;
 
     match input_message with
-    | Greetings (nodetype, ip, port) ->
-        Printf.printf "Greetings new %s.\n%!" (nodetype_literal nodetype);
-        greet_new_node !network mynodetype server_ip !server_port out_chan;
-        network := NodeSet.add (nodetype, ip, port) !network;
-
-        print_endline "Sharing new node to rest of the network.";
-        share_new_node !network ip port;
-        print_new_network !network
     | NetworkNewNode (nodetype, ip, port) ->
         Printf.printf "Received new node of type %s.\n%!"
           (nodetype_literal nodetype);
         network := NodeSet.add (nodetype, ip, port) !network;
         print_new_network !network
-    | _ -> ()
+    | _ -> print_endline "Ignoring."
   done
 
 let () = main ()
