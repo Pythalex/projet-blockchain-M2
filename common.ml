@@ -70,6 +70,45 @@ let print_node (nodetype, ip, port) =
 let print_NodeSet set = print_set print_node set
 
 (*
+  Abstract representation of a blockchain block
+*)
+type block = {
+  m : string;
+  id : int;
+  mutable nonce : int;
+}
+
+(*
+  Function: make_block
+  Creates a block with given message and id and nonce 0.
+*)
+let make_block m id =
+  {m = m; id = id; nonce = 0}
+
+(*
+  Function: make_block_list
+  Creates a list of n block with id starting from 0 to n - 1.
+*)
+let make_block_list n =
+  List.init n (fun i -> make_block ("Block N°"^(string_of_int i)) i)
+
+(*
+  Function: block_fingerprint
+  Returns the md5 fingerprint of a block
+*)
+let block_fingerprint block =
+  Digest.string (Marshal.to_string block [])
+
+(*
+  Function: hash_is_solution
+  Indicates if the given hash starts with '0' * difficulty,
+  or 'difficulty' times the '0' character
+*)
+let hash_is_solution hash difficulty =
+  let hash_start = String.sub hash 0 difficulty in
+  hash_start = String.make difficulty '0'
+
+(*
   All types of messages used for communication between nodes in the network
 *)
 type message =
