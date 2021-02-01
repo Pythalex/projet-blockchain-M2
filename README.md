@@ -49,3 +49,22 @@ Ils ne notifient pas tous leur voisins de cette deconnexion.
 Remarque: Puisque pour le moment la seule communication est celle du maillage, il restera toujours au moins un noeud qui possède
 dans son réseau le noeud déconnecté. Le noeud se fait supprimer du réseau après l'envoi de l'ensemble au nouveau noeud, qui possèdera
 donc ce noeud mort.
+
+## Exercice 3 - Threads
+
+L'exercice trois est réalisé dans un fichier à part pour faciliter la reproduction de l'exercice.
+Le fichier implémentant les deux mineurs concurrents est `parallel_mining_test.ml`.
+
+Le fichier est compilé lors d'un `make`. Ou sinon précisément avec `make exercice3`.
+
+Pour lancer le programme : `./parallel_mining_test.ml`. La difficulté est réglée dans la fonction main (pas de paramètre de programme).
+
+![exemple](https://i.imgur.com/E0Ee8FH.png)
+
+### Détails d'implémentation
+
+Pour se faire passer le message, les threads utilisent une référence d'int commune représentant l'id courant sur lequel travaille le mineur le plus rapide.
+Lors de chaque minage, les threads consultent cet id pour savoir si l'autre threads a réussi à trouver un hash satisfaisant. Lorsqu'un thread gagne,
+il incrémente cet id commun et passe à la suite.
+Compte tenu du caractère mono-coeur du programme, un thread qui gagne au premier coup va généralement gagner les autres manches. De plus, il s'agira souvent
+du thread pair qui commence en premier, puisqu'il aura une longueur d'avance sur l'autre thread. Il arrive cependant que le second thread finisse par remporter une manche par le fruit du hasard.

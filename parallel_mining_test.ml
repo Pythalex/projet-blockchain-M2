@@ -9,8 +9,7 @@ let sync_set boolref mutex =
 
 let rec mine block pair difficulty current_id mutex =
   let found = !current_id > block.id in
-  if found then
-    None
+  if found then None
   else
     let hash = block_fingerprint block in
     if hash_is_solution hash difficulty then Some (block.nonce, hash)
@@ -81,6 +80,10 @@ let () =
 
   let n = 5 in
   let blocklist = make_block_list n in
-  mine_blocklist blocklist 3;
+  (*
+     ==V== TO CHANGE DIFFICULTY ==V==
+  *)
+  let difficulty = 3 in
+  mine_blocklist blocklist difficulty;
   (*let _ = Thread.create f (mine_blocklist, blocklist, false, 1) in*)
   ignore (read_line ())
