@@ -13,4 +13,4 @@ exercice3 : parallel_mining_test.ml common
 	ocamlc -I +threads -o parallel_mining_test unix.cma threads.cma common.cmo parallel_mining_test.ml
 
 clean:
-	rm *.cmi *.cmo miner wallet
+	rm *.cmi *.cmo miner wallet parallel_mining_test
