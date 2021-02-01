@@ -1,29 +1,30 @@
 open Common
 
-let f (g, a, b, c, d, e, f) = g a b c d e f
+let f (g, a, b, c, d, e) = g a b c d e
 
 let sync_set boolref mutex =
   Mutex.lock mutex;
   boolref := not !boolref;
   Mutex.unlock mutex
 
-let rec mine block pair difficulty other_has_found mutex =
-  let found = !other_has_found in
-  if found then None
+let rec mine block pair difficulty current_id mutex =
+  let found = !current_id > block.id in
+  if found then
+    None
   else
     let hash = block_fingerprint block in
     if hash_is_solution hash difficulty then Some (block.nonce, hash)
     else
       mine
         { block with nonce = block.nonce + 2 }
-        pair difficulty other_has_found mutex
+        pair difficulty current_id mutex
 
-let mine_blocklist_thread blocklist pair difficulty found_pair found_impair
-    mutex =
+(*
+  Hypothèse : dans la liste, les id des blocks sont la suite naturelle 0..n
+*)
+let mine_blocklist_thread blocklist pair difficulty current_id mutex =
   let my_name = if pair then " pair " else "impair" in
   let other_name = if pair then "impair" else " pair " in
-  let i_found = if pair then found_pair else found_impair in
-  let other_has_found = if pair then found_impair else found_pair in
   let first = ref false in
 
   let rec loop blocklist =
@@ -31,20 +32,16 @@ let mine_blocklist_thread blocklist pair difficulty found_pair found_impair
     | b :: rest ->
         let block = if not pair then { b with nonce = 1 } else b in
 
-        (match mine block pair difficulty other_has_found mutex with
+        (match mine block pair difficulty current_id mutex with
         | Some (nonce, hash) ->
             Mutex.lock mutex;
-            if !other_has_found then (
-              first := false;
-              other_has_found := false)
+            if !current_id > block.id then first := false
             else (
-              i_found := true;
+              current_id := !current_id + 1;
               first := true);
             Mutex.unlock mutex;
             block.nonce <- nonce
-        | None ->
-            first := false;
-            sync_set other_has_found mutex);
+        | None -> first := false);
 
         Mutex.lock mutex;
         if !first then (
@@ -66,28 +63,15 @@ let mine_blocklist_thread blocklist pair difficulty found_pair found_impair
   loop blocklist
 
 let mine_blocklist blocklist difficulty =
-  let pair_has_found = ref false in
-  let impair_has_found = ref false in
+  let current_id = ref 0 in
   let m = Mutex.create () in
   let thread_pair =
     Thread.create f
-      ( mine_blocklist_thread,
-        blocklist,
-        true,
-        difficulty,
-        pair_has_found,
-        impair_has_found,
-        m )
+      (mine_blocklist_thread, blocklist, true, difficulty, current_id, m)
   in
   let thread_impair =
     Thread.create f
-      ( mine_blocklist_thread,
-        blocklist,
-        false,
-        difficulty,
-        pair_has_found,
-        impair_has_found,
-        m )
+      (mine_blocklist_thread, blocklist, false, difficulty, current_id, m)
   in
   Thread.join thread_pair;
   Thread.join thread_impair
@@ -97,6 +81,6 @@ let () =
 
   let n = 5 in
   let blocklist = make_block_list n in
-  mine_blocklist blocklist 1;
+  mine_blocklist blocklist 3;
   (*let _ = Thread.create f (mine_blocklist, blocklist, false, 1) in*)
   ignore (read_line ())
