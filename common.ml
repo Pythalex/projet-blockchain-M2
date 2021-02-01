@@ -90,7 +90,7 @@ let make_block m id =
   Creates a list of n block with id starting from 0 to n - 1.
 *)
 let make_block_list n =
-  List.init n (fun i -> make_block ("Block N°"^(string_of_int i)) i)
+  List.init n (fun i -> make_block ("Block N°"^(string_of_int i)^" ~"^(string_of_int (Random.int 100))) i)
 
 (*
   Function: block_fingerprint
