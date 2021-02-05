@@ -14,7 +14,7 @@ Exemple, pour le premier mineur:
 
 Le second:
 
-`./miner -p 8001 --rp "127.0.0.1" --rp 8000`
+`./miner -p 8001 --ri "127.0.0.1" --rp 8000`
 
 
 ## Lancer un wallet
