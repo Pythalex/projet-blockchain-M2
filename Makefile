@@ -1,16 +1,16 @@
-all: common miner wallet exercice3
+all: common merkle miner wallet
 
-miner: miner.ml common
-	ocamlc -I +threads -o miner unix.cma threads.cma common.cmo miner.ml
+miner: miner.ml common merkle
+	ocamlfind ocamlopt -thread -o miner -linkpkg -package threads -package unix common.cmx miner.ml
 
-wallet: wallet.ml common
-	ocamlc -I +threads -o wallet unix.cma threads.cma common.cmo wallet.ml
+wallet: wallet.ml common merkle
+	ocamlfind ocamlopt -thread -o wallet -linkpkg -package threads -package unix common.cmx wallet.ml
 
 common: common.ml
-	ocamlc -c unix.cma common.ml
+	ocamlfind ocamlopt -linkpkg -package unix common.ml
 
-exercice3 : parallel_mining_test.ml common
-	ocamlc -I +threads -o parallel_mining_test unix.cma threads.cma common.cmo parallel_mining_test.ml
+merkle: merkle.ml
+	ocamlfind ocamlopt -linkpkg -package zarith merkle.ml
 
 clean:
-	rm *.cmi *.cmo miner wallet parallel_mining_test
+	rm *.cmi *.cmo *.cmx miner wallet
