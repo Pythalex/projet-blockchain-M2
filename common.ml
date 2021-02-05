@@ -20,10 +20,10 @@ let nodetype_literal nt = match nt with Miner -> "Miner" | Wallet -> "Wallet"
   Sort nodes by comparing their port number
 *)
 module NodeSet = Set.Make (struct
-  let compare (nodetype, ip1, port1) (nodetype, ip2, port2) =
+  let compare (name,nodetype, ip1, port1) (name, nodetype, ip2, port2) =
     Stdlib.compare port1 port2
-
-  type t = nodetype * Unix.inet_addr * int
+    
+  type t = string * nodetype * Unix.inet_addr * int
 end)
 
 module HashSet = Set.Make (struct
@@ -57,8 +57,9 @@ let print_set print_element set =
     ip, INET_ADDR the ip address of the node in the network
     port, int the listening port number of the node
 *)
-let print_node (nodetype, ip, port) =
-  Printf.printf "\t(%s, %s, %d)\n"
+let print_node (name, nodetype, ip, port) =
+  Printf.printf "\t(%s, %s, %s, %d)\n"
+    (name)
     (nodetype_literal nodetype)
     (Unix.string_of_inet_addr ip)
     port
@@ -112,9 +113,9 @@ let hash_is_solution hash difficulty =
   All types of messages used for communication between nodes in the network
 *)
 type message =
-  | Greetings of nodetype * inet_addr * int
+  | Greetings of string * nodetype * inet_addr * int
   | NetworkMap of NodeSet.t
-  | NetworkNewNode of nodetype * inet_addr * int
+  | NetworkNewNode of string * nodetype * inet_addr * int
 
 (*
   Stringify of node communication messages
@@ -160,7 +161,7 @@ let extract_ip_port_from_sockaddr sockaddr =
   Filter given network (node set) and returns only miners
 *)
 let only_miner_filter network =
-  let is_miner (nodetype, ip, port) =
+  let is_miner (name, nodetype, ip, port) =
     match nodetype with Miner -> true | Wallet -> false
   in
   let filtered = NodeSet.filter is_miner network in
@@ -170,7 +171,7 @@ let only_miner_filter network =
   Filter given network (node set) and returns only miners
 *)
 let only_wallet_filter network =
-  let is_wallet (nodetype, ip, port) =
+  let is_wallet (name, nodetype, ip, port) =
     match nodetype with Miner -> false | Wallet -> true
   in
   NodeSet.filter is_wallet network
@@ -188,7 +189,7 @@ let only_wallet_filter network =
 let broadcast network msg =
   let didnt_respond = ref NodeSet.empty in
 
-  let share (nodetype, ip, port) =
+  let share (name, nodetype, ip, port) =
     let addr = ADDR_INET (ip, port) in
     let s = socket PF_INET SOCK_STREAM 0 in
 
@@ -203,7 +204,7 @@ let broadcast network msg =
         output_value out_chan msg;
         flush out_chan
       with Unix_error (Unix.ECONNREFUSED, _, _) ->
-        didnt_respond := NodeSet.add (nodetype, ip, port) !didnt_respond );
+        didnt_respond := NodeSet.add (name, nodetype, ip, port) !didnt_respond );
 
     Unix.close s
   in
@@ -223,10 +224,10 @@ let broadcast network msg =
   Returns:
     The set of nodes that didn't respond
 *)
-let share_new_node network nodetype new_ip new_port =
+let share_new_node network name nodetype new_ip new_port =
   broadcast
     (only_miner_filter network)
-    (NetworkNewNode (nodetype, new_ip, new_port))
+    (NetworkNewNode (name, nodetype, new_ip, new_port))
 
 (*
   Function: connect_to_miner
@@ -242,7 +243,7 @@ let share_new_node network nodetype new_ip new_port =
   Returns:
 
 *)
-let connect_to_miner nodetype my_ip my_port miner_ip miner_port =
+let connect_to_miner name nodetype my_ip my_port miner_ip miner_port =
   let addr = ADDR_INET (miner_ip, miner_port) in
   let s = socket PF_INET SOCK_STREAM 0 in
   connect s addr;
@@ -254,7 +255,7 @@ let connect_to_miner nodetype my_ip my_port miner_ip miner_port =
     miner_port;
 
   (* self identification to remote node  *)
-  output_value out_chan (Greetings (nodetype, my_ip, my_port));
+  output_value out_chan (Greetings (name, nodetype, my_ip, my_port));
   flush out_chan;
   print_endline "Sent identification.";
 
@@ -269,7 +270,7 @@ let connect_to_miner nodetype my_ip my_port miner_ip miner_port =
   Function: greet_new_node
   Send the network map to the new node
 *)
-let greet_new_node network nodetype server_ip server_port out_chan =
+let greet_new_node network name nodetype server_ip server_port out_chan =
   output_value out_chan
-    (NetworkMap (NodeSet.add (nodetype, server_ip, server_port) network));
+    (NetworkMap (NodeSet.add (name, nodetype, server_ip, server_port) network));
   flush out_chan

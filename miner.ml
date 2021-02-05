@@ -2,6 +2,7 @@ open Unix
 open Common
 
 (* -- network variables -- *)
+let name = ref ""
 
 let server_ip = inet_addr_loopback
 
@@ -26,6 +27,8 @@ let usage_msg = "Super bitcoin miner"
 Arg.parse speclist print_endline usage_msg
 
 (* -- application variables -- *)
+
+let name = ""
 
 let mynodetype = Miner
 
@@ -76,40 +79,40 @@ let process_client client_socket client_addr =
     (* Try to understand the message *)
     match input_message with
     (* A new node asks to enter the network *)
-    | Greetings (nodetype, ip, port) ->
+    | Greetings (name, nodetype, ip, port) ->
         Printf.printf "Greetings new %s@%s:%d.\n%!"
           (nodetype_literal nodetype)
           (string_of_inet_addr ip) port;
 
         (* Gives the network map to the new node *)
-        greet_new_node !network mynodetype server_ip !server_port out_chan;
+        greet_new_node !network name mynodetype server_ip !server_port out_chan;
 
         (* Broadcast the new node id *)
         print_endline "Sharing new node to rest of the network.";
-        let didnt_respond = share_new_node !network nodetype ip port in
+        let didnt_respond = share_new_node !network name nodetype ip port in
         (* mark own message as seen to ignore it when it echoes *)
         received_messages :=
-          add_message !received_messages (NetworkNewNode (nodetype, ip, port));
+          add_message !received_messages (NetworkNewNode (name, nodetype, ip, port));
 
         (* Update own network map *)
         (* remove dead nodes *)
         network := NodeSet.diff !network didnt_respond;
         (* add new *)
-        network := NodeSet.add (nodetype, ip, port) !network;
+        network := NodeSet.add (name, nodetype, ip, port) !network;
         print_new_network !network
     (* A new node has been registered in the network *)
-    | NetworkNewNode (nodetype, ip, port) ->
+    | NetworkNewNode (name,nodetype, ip, port) ->
         Printf.printf "Received new node of type %s.\n%!"
           (nodetype_literal nodetype);
 
         print_endline "Broadcasting new node";
-        let didnt_respond = share_new_node !network nodetype ip port in
+        let didnt_respond = share_new_node !network name nodetype ip port in
 
         (* Update own network map *)
         (* remove dead nodes *)
         network := NodeSet.diff !network didnt_respond;
         (* add new *)
-        network := NodeSet.add (nodetype, ip, port) !network;
+        network := NodeSet.add (name, nodetype, ip, port) !network;
         print_new_network !network
     | _ -> () )
 
@@ -126,7 +129,7 @@ let main () =
   (* Call miner if a port was given in argument *)
   if !connect_to_port <> 0 then (
     network :=
-      connect_to_miner Miner server_ip !server_port !connect_to_ip
+      connect_to_miner name Miner server_ip !server_port !connect_to_ip
         !connect_to_port;
     Printf.printf "Réponse reçue de la part du miner distant\n%!";
     print_NodeSet !network );

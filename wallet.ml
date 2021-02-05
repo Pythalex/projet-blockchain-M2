@@ -2,6 +2,8 @@ open Unix
 open Common
 
 (* network variables *)
+let name = ref ""
+
 let server_ip = inet_addr_loopback
 
 let server_port = ref 0
@@ -17,6 +19,7 @@ let speclist =
     ("-p", Arg.Set_int server_port, "Listening port number");
     ("--remote-ip", Arg.String set_connect_to_ip, "Remote miner's ip");
     ("--remote-port", Arg.Set_int connect_to_port, "Remote miner's port number");
+    ("-n", Arg.Set_string name, "Wallet id");
   ]
 
 let usage_msg = "Super wallet"
@@ -45,7 +48,7 @@ let main () =
   (* Call miner if a port was given in argument *)
   if !connect_to_port <> 0 then (
     network :=
-      connect_to_miner mynodetype server_ip !server_port !connect_to_ip
+      connect_to_miner !name mynodetype server_ip !server_port !connect_to_ip
         !connect_to_port;
     Printf.printf "Réponse reçue de la part du miner distant\n%!";
     print_NodeSet !network );
@@ -72,10 +75,10 @@ let main () =
       client_port;
 
     match input_message with
-    | NetworkNewNode (nodetype, ip, port) ->
+    | NetworkNewNode (name, nodetype, ip, port) ->
         Printf.printf "Received new node of type %s.\n%!"
           (nodetype_literal nodetype);
-        network := NodeSet.add (nodetype, ip, port) !network;
+        network := NodeSet.add (name, nodetype, ip, port) !network;
         print_new_network !network
     | _ -> print_endline "Ignoring."
   done
