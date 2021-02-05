@@ -15,15 +15,40 @@ type nodetype = Miner | Wallet
 let nodetype_literal nt = match nt with Miner -> "Miner" | Wallet -> "Wallet"
 
 (*
+  Function extract_ip_port_from_sockaddr:
+  Get the information contained in a socket, the union type sockaddr objet
+
+  Arguments: sockaddr, the socket 
+  Returns: pair (ip, port) of the socket
+
+  Remark : str to ip port not implemented
+*)
+let extract_ip_port_from_sockaddr sockaddr =
+  match sockaddr with
+  | ADDR_UNIX str -> raise NotImplemented
+  | ADDR_INET (ip, port) -> (ip, port)
+
+(*
+  Function: string_of_sockaddr
+  Get the string representation of a socket address as 'ip:port'
+*)
+let string_of_sockaddr sockaddr =
+  let (ip, port) = extract_ip_port_from_sockaddr sockaddr in
+  Printf.sprintf "%s:%d" (string_of_inet_addr ip) port
+
+
+(*
   Module: NodeSet
   A custom set containing nodes as tuple (nodetype, ip, port)
   Sort nodes by comparing their port number
 *)
 module NodeSet = Set.Make (struct
-  let compare (name,nodetype, ip1, port1) (name, nodetype, ip2, port2) =
+  let compare sockaddr1 sockaddr2 =
+    let (ip1, port1) = extract_ip_port_from_sockaddr sockaddr1 in
+    let (ip2, port2) = extract_ip_port_from_sockaddr sockaddr2 in
     Stdlib.compare port1 port2
     
-  type t = string * nodetype * Unix.inet_addr * int
+  type t = Unix.sockaddr
 end)
 
 module HashSet = Set.Make (struct
@@ -57,12 +82,8 @@ let print_set print_element set =
     ip, INET_ADDR the ip address of the node in the network
     port, int the listening port number of the node
 *)
-let print_node (name, nodetype, ip, port) =
-  Printf.printf "\t(%s, %s, %s, %d)\n"
-    (name)
-    (nodetype_literal nodetype)
-    (Unix.string_of_inet_addr ip)
-    port
+let print_node addr =
+  Printf.printf "\t(%s)\n" (string_of_sockaddr addr)
 
 (*
   Function: print_NodeSet
@@ -108,14 +129,23 @@ let block_fingerprint block =
 let hash_is_solution hash difficulty =
   let hash_start = String.sub hash 0 difficulty in
   hash_start = String.make difficulty '0'
-
+ 
 (*
   All types of messages used for communication between nodes in the network
 *)
 type message =
-  | Greetings of string * nodetype * inet_addr * int
+  | Greetings of sockaddr
   | NetworkMap of NodeSet.t
-  | NetworkNewNode of string * nodetype * inet_addr * int
+  | NetworkNewNode of sockaddr
+  | Blockchain
+  | BlockchainHeader
+  | TransactionExist
+  | TransactionWaiting
+  | TransactionNotExist
+  | ShowBlockchain
+  | Transaction
+  | ShowPeers
+  | Confirmation
 
 (*
   Stringify of node communication messages
@@ -125,6 +155,15 @@ let message_literal msg =
   | Greetings _ -> "Greetings"
   | NetworkMap _ -> "NetworkMap"
   | NetworkNewNode _ -> "NetworkNewNode"
+  | Blockchain -> "Blockchain"
+  | BlockchainHeader -> "BlockchainHeader"
+  | TransactionExist -> "TransactionExist"
+  | TransactionWaiting -> "TransactionWaiting"
+  | TransactionNotExist -> "TransactionNotExist"
+  | ShowBlockchain -> "ShowBlockchain"
+  | Transaction -> "Transaction"
+  | ShowPeers -> "ShowPeers"
+  | Confirmation -> "Confirmation"
 
 (*
   Function: add_message
@@ -143,38 +182,6 @@ let already_received_message received_messages msg =
   let is_msg m = m = hash_msg in
   HashSet.exists is_msg received_messages
 
-(*
-  Function extract_ip_port_from_sockaddr:
-  Get the information contained in a socket, the union type sockaddr objet
-
-  Arguments: sockaddr, the socket 
-  Returns: pair (ip, port) of the socket
-
-  Remark : str to ip port not implemented
-*)
-let extract_ip_port_from_sockaddr sockaddr =
-  match sockaddr with
-  | ADDR_UNIX str -> raise NotImplemented
-  | ADDR_INET (ip, port) -> (ip, port)
-
-(**
-  Filter given network (node set) and returns only miners
-*)
-let only_miner_filter network =
-  let is_miner (name, nodetype, ip, port) =
-    match nodetype with Miner -> true | Wallet -> false
-  in
-  let filtered = NodeSet.filter is_miner network in
-  filtered
-
-(**
-  Filter given network (node set) and returns only miners
-*)
-let only_wallet_filter network =
-  let is_wallet (name, nodetype, ip, port) =
-    match nodetype with Miner -> false | Wallet -> true
-  in
-  NodeSet.filter is_wallet network
 
 (*
     Function: broadcast
@@ -189,14 +196,11 @@ let only_wallet_filter network =
 let broadcast network msg =
   let didnt_respond = ref NodeSet.empty in
 
-  let share (name, nodetype, ip, port) =
-    let addr = ADDR_INET (ip, port) in
+  let share addr =
     let s = socket PF_INET SOCK_STREAM 0 in
 
-    Printf.printf "Broadcasting to %s@%s:%d.\n%!"
-      (nodetype_literal nodetype)
-      (string_of_inet_addr ip) port;
-
+    Printf.printf "Broadcasting to miner@%s.\n%!" (string_of_sockaddr addr);
+ 
     (* Try to broadcast to the node, remember if it doesn't respond *)
     ( try
         connect s addr;
@@ -204,7 +208,7 @@ let broadcast network msg =
         output_value out_chan msg;
         flush out_chan
       with Unix_error (Unix.ECONNREFUSED, _, _) ->
-        didnt_respond := NodeSet.add (name, nodetype, ip, port) !didnt_respond );
+        didnt_respond := NodeSet.add addr !didnt_respond );
 
     Unix.close s
   in
@@ -224,10 +228,8 @@ let broadcast network msg =
   Returns:
     The set of nodes that didn't respond
 *)
-let share_new_node network name nodetype new_ip new_port =
-  broadcast
-    (only_miner_filter network)
-    (NetworkNewNode (name, nodetype, new_ip, new_port))
+let share_new_node network addr =
+  broadcast network (NetworkNewNode addr)
 
 (*
   Function: connect_to_miner
@@ -243,21 +245,43 @@ let share_new_node network name nodetype new_ip new_port =
   Returns:
 
 *)
-let connect_to_miner name nodetype my_ip my_port miner_ip miner_port =
-  let addr = ADDR_INET (miner_ip, miner_port) in
+let connect_to_miner my_address miner_address =
   let s = socket PF_INET SOCK_STREAM 0 in
-  connect s addr;
+  connect s miner_address;
 
   let in_chan = in_channel_of_descr s in
   let out_chan = out_channel_of_descr s in
-  Printf.printf "Connected to miner at %s:%d.\n%!"
-    (string_of_inet_addr miner_ip)
-    miner_port;
+  Printf.printf "Connected to miner at %s.\n%!" (string_of_sockaddr miner_address);
 
   (* self identification to remote node  *)
-  output_value out_chan (Greetings (name, nodetype, my_ip, my_port));
+  output_value out_chan (Greetings (my_address));
   flush out_chan;
   print_endline "Sent identification.";
+
+  (* receive network map *)
+  match input_value in_chan with
+  | NetworkMap n ->
+      Unix.close s;
+      n
+  | _ -> raise (NotUnderstood "Expected NetworkMap.")
+
+(*
+  Function: get_peers
+  Get the node network from given miner but doesn't enter the network.
+  Used by wallets.
+*)
+let show_peers miner_address =
+  let s = socket PF_INET SOCK_STREAM 0 in
+  connect s miner_address;
+
+  let in_chan = in_channel_of_descr s in
+  let out_chan = out_channel_of_descr s in
+  Printf.printf "Connected to miner at %s.\n%!" (string_of_sockaddr miner_address);
+
+  (* self identification to remote node  *)
+  output_value out_chan ShowPeers;
+  flush out_chan;
+  print_endline "Asking network map.";
 
   (* receive network map *)
   match input_value in_chan with
@@ -270,7 +294,7 @@ let connect_to_miner name nodetype my_ip my_port miner_ip miner_port =
   Function: greet_new_node
   Send the network map to the new node
 *)
-let greet_new_node network name nodetype server_ip server_port out_chan =
+let greet_new_node network my_address out_chan =
   output_value out_chan
-    (NetworkMap (NodeSet.add (name, nodetype, server_ip, server_port) network));
+    (NetworkMap (NodeSet.add my_address network));
   flush out_chan
