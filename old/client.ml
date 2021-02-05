@@ -1,8 +1,10 @@
 open Unix
 
+(* network variables *)
 let ip = inet_addr_loopback
 let port = 8000
-let addr = ADDR_INET(ip,port)
+
+let addr = ADDR_INET(ip, port) 
 
 (* création de la socket IPv4, TCP *)
 let s = socket PF_INET SOCK_STREAM 0
@@ -23,5 +25,3 @@ let () =
     let r = input_line in_chan in
     Format.printf "%s@." r
   done
-
-  

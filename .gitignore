@@ -2,3 +2,9 @@
 *.cmo
 client
 server
+IntPairSet
+test
+miner
+.vscode
+wallet
+parallel_mining_test
