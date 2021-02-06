@@ -113,19 +113,13 @@ let string_of_transaction transaction =
   Format.sprintf "Transaction(id=%d) from '%s' to '%s' : %f%!" transaction.id transaction.source transaction.destination transaction.amount
 
 (*
-  Represents a header of a block
-  TODO : add hash of sum of hash of transactions
-*)
-type blockheader = {
-  id : int;
-  mutable nonce : int;
-}
-
-(*
   Abstract representation of a blockchain block
 *)
 type block = {
-  header : blockheader;
+  id : int;
+  mutable nonce : int;
+  prevhash : string;
+  mutable hash : string;
   mutable transactions : transaction list;
 }
 
@@ -133,10 +127,10 @@ type block = {
   Function: make_block
   Creates a block with given message and id and nonce 0.
 *)
-let make_block id transactions =
-  { header = {id = id; nonce = 0}; transactions = transactions}
+let make_block id transactions prevhash =
+  { id = id; nonce = 0; prevhash = prevhash; hash = ""; transactions = transactions}
 
-let genesis = make_block 0 []
+let genesis = make_block 0 [] ""
 
 (*
   Function: make_block_list
@@ -152,17 +146,28 @@ let make_block_list n =
 let block_fingerprint block =
   Digest.string (Marshal.to_string block [])
 
-let last_blockchain_id blockchain =
+let blockchain_last_block blockchain =
+  match blockchain with
+    b::r -> b
+    | [] -> genesis
+
+let blockchain_previous_id blockchain =
   (* last block = first in chained list - stack -*)
   match blockchain with
-    | x::b -> x.header.id
+    | x::b -> x.id
     | _ -> 0
+
+let blockchain_previous_hash blockchain =
+  match blockchain with
+    | x::b -> x.hash
+    | _ -> ""
 
 let string_of_block block =
   let buffer = Buffer.create 42 in
-  Buffer.add_string buffer (Format.sprintf "Block(ID = %d)\nnonce = %d\ntransactions = {\n\t" block.header.id block.header.nonce);
-  let f trans = Buffer.add_string buffer ("\t" ^ string_of_transaction trans ^ "\n") in
+  Buffer.add_string buffer (Format.sprintf "Block(ID = %d):\n    nonce = %d\n    transactions = {\n" block.id block.nonce);
+  let f trans = Buffer.add_string buffer ("        " ^ string_of_transaction trans ^ "\n") in
   List.iter f block.transactions;
+  Buffer.add_string buffer "    }";
   Buffer.contents buffer (* returns the final string *)
 
 
@@ -182,8 +187,9 @@ type message =
   | Greetings of sockaddr
   | NetworkMap of NodeSet.t
   | NetworkNewNode of sockaddr
+  | Block of block
   | Blockchain of block list
-  | BlockchainHeader of blockheader list
+  | BlockchainHeader of block list
   | TransactionExist 
   | TransactionWaiting
   | TransactionNotExist
@@ -200,6 +206,7 @@ let message_literal msg =
   | Greetings _ -> "Greetings"
   | NetworkMap _ -> "NetworkMap"
   | NetworkNewNode _ -> "NetworkNewNode"
+  | Block _ -> "Block"
   | Blockchain _ -> "Blockchain"
   | BlockchainHeader _ -> "BlockchainHeader"
   | TransactionExist -> "TransactionExist"
@@ -244,7 +251,7 @@ let broadcast network msg =
   let share addr =
     let s = socket PF_INET SOCK_STREAM 0 in
 
-    Printf.printf "Broadcasting to miner@%s.\n%!" (string_of_sockaddr addr);
+    (*Printf.printf "Broadcasting to miner@%s.\n%!" (string_of_sockaddr addr);*)
  
     (* Try to broadcast to the node, remember if it doesn't respond *)
     ( try
