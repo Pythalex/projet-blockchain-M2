@@ -92,27 +92,44 @@ let print_node addr =
 let print_NodeSet set = print_set print_node set
 
 (*
+  Type enregistrement 
+*)
+type transaction = {
+  source : string;
+  destination : string;
+  amount : float;
+}
+
+(*
+  Represents a header of a block
+  TODO : add hash of sum of hash of transactions
+*)
+type blockheader = {
+  id : int;
+  mutable nonce : int;
+}
+
+(*
   Abstract representation of a blockchain block
 *)
 type block = {
-  m : string;
-  id : int;
-  mutable nonce : int;
+  header : blockheader;
+  transactions : transaction list;
 }
 
 (*
   Function: make_block
   Creates a block with given message and id and nonce 0.
 *)
-let make_block m id =
-  {m = m; id = id; nonce = 0}
+let make_block id transactions =
+  { header = {id = id; nonce = 0}; transactions = transactions}
 
 (*
   Function: make_block_list
   Creates a list of n block with id starting from 0 to n - 1.
 *)
 let make_block_list n =
-  List.init n (fun i -> make_block ("Block N°"^(string_of_int i)^" ~"^(string_of_int (Random.int 100))) i)
+  List.init n (fun i -> make_block i [])
 
 (*
   Function: block_fingerprint
@@ -139,13 +156,13 @@ type message =
   | NetworkNewNode of sockaddr
   | Blockchain
   | BlockchainHeader
-  | TransactionExist
+  | TransactionExist 
   | TransactionWaiting
   | TransactionNotExist
   | ShowBlockchain
-  | Transaction
+  | Transaction of transaction
   | ShowPeers
-  | Confirmation
+  | Confirmation of transaction
 
 (*
   Stringify of node communication messages
@@ -161,9 +178,9 @@ let message_literal msg =
   | TransactionWaiting -> "TransactionWaiting"
   | TransactionNotExist -> "TransactionNotExist"
   | ShowBlockchain -> "ShowBlockchain"
-  | Transaction -> "Transaction"
+  | Transaction _ -> "Transaction"
   | ShowPeers -> "ShowPeers"
-  | Confirmation -> "Confirmation"
+  | Confirmation _ -> "Confirmation"
 
 (*
   Function: add_message

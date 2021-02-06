@@ -2,6 +2,7 @@
 *.cmo
 *.cmx
 *.o
+*.aout
 client
 server
 IntPairSet

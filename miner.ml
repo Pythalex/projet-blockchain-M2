@@ -107,6 +107,8 @@ let process_client my_address client_socket client_addr =
   | ShowPeers ->
       output_value out_chan (NetworkMap (NodeSet.add my_address !network));
       flush out_chan
+  | Transaction t ->
+      Printf.printf "Received transaction of %f bitconneeeeect from %s to %s.\n%!" t.amount t.source t.destination
   | _ -> print_endline "I don't understand the message, ignoring."
 
 let main () =
