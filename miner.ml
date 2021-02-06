@@ -63,6 +63,10 @@ let print_new_network network =
   print_endline "New network:";
   print_NodeSet network
 
+(*
+  Function: puzzle
+  Returns a nonce such as hash (block nonce) matches difficulty
+*)
 let rec puzzle block =
   if blockchain_previous_id !blockchain >= block.id then raise AlreadyMined
   else (
@@ -79,6 +83,13 @@ let rec puzzle block =
   if hash_is_solution hash !difficulty then block.nonce
   else puzzle { block with nonce = block.nonce + 1 }
 
+(*
+  Function: mining
+  Main mining thread function
+  
+  Loops infinitely and mines whenever in_mining_block contains a block.
+
+*)
 let mining () =
   while true do
     (* sleep 0.5 s *)
@@ -102,9 +113,11 @@ let mining () =
           Mutex.lock blockchain_mutex;
           Mutex.lock network_mutex;
           Mutex.lock mining_block_mutex;
+
           blockchain := b :: !blockchain;
           network := broadcast !network (Block b);
           in_mining_block := None;
+
           Mutex.unlock mining_block_mutex;
           Mutex.unlock network_mutex;
           Mutex.unlock blockchain_mutex;
