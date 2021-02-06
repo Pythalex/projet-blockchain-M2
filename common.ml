@@ -4,6 +4,11 @@ exception NotUnderstood of string
 
 exception NotImplemented
 
+
+let get_timestamp () =
+  let t = time () in
+  t
+
 (*
   Possible types of nodes in the network
 *)
@@ -95,10 +100,17 @@ let print_NodeSet set = print_set print_node set
   Type enregistrement 
 *)
 type transaction = {
+  id : int;
   source : string;
   destination : string;
   amount : float;
 }
+
+let make_transaction s d a =
+  {id = int_of_float (1000. *. get_timestamp ()); source = s; destination = d; amount = a}
+
+let string_of_transaction transaction =
+  Format.sprintf "Transaction(id=%d) from '%s' to '%s' : %f%!" transaction.id transaction.source transaction.destination transaction.amount
 
 (*
   Represents a header of a block
@@ -114,7 +126,7 @@ type blockheader = {
 *)
 type block = {
   header : blockheader;
-  transactions : transaction list;
+  mutable transactions : transaction list;
 }
 
 (*
@@ -123,6 +135,8 @@ type block = {
 *)
 let make_block id transactions =
   { header = {id = id; nonce = 0}; transactions = transactions}
+
+let genesis = make_block 0 []
 
 (*
   Function: make_block_list
@@ -137,6 +151,20 @@ let make_block_list n =
 *)
 let block_fingerprint block =
   Digest.string (Marshal.to_string block [])
+
+let last_blockchain_id blockchain =
+  (* last block = first in chained list - stack -*)
+  match blockchain with
+    | x::b -> x.header.id
+    | _ -> 0
+
+let string_of_block block =
+  let buffer = Buffer.create 42 in
+  Buffer.add_string buffer (Format.sprintf "Block(ID = %d)\nnonce = %d\ntransactions = {\n\t" block.header.id block.header.nonce);
+  let f trans = Buffer.add_string buffer ("\t" ^ string_of_transaction trans ^ "\n") in
+  List.iter f block.transactions;
+  Buffer.contents buffer (* returns the final string *)
+
 
 (*
   Function: hash_is_solution
@@ -154,14 +182,14 @@ type message =
   | Greetings of sockaddr
   | NetworkMap of NodeSet.t
   | NetworkNewNode of sockaddr
-  | Blockchain
-  | BlockchainHeader
+  | Blockchain of block list
+  | BlockchainHeader of blockheader list
   | TransactionExist 
   | TransactionWaiting
   | TransactionNotExist
   | ShowBlockchain
-  | Transaction of transaction
   | ShowPeers
+  | Transaction of transaction
   | Confirmation of transaction
 
 (*
@@ -172,14 +200,14 @@ let message_literal msg =
   | Greetings _ -> "Greetings"
   | NetworkMap _ -> "NetworkMap"
   | NetworkNewNode _ -> "NetworkNewNode"
-  | Blockchain -> "Blockchain"
-  | BlockchainHeader -> "BlockchainHeader"
+  | Blockchain _ -> "Blockchain"
+  | BlockchainHeader _ -> "BlockchainHeader"
   | TransactionExist -> "TransactionExist"
   | TransactionWaiting -> "TransactionWaiting"
   | TransactionNotExist -> "TransactionNotExist"
   | ShowBlockchain -> "ShowBlockchain"
-  | Transaction _ -> "Transaction"
   | ShowPeers -> "ShowPeers"
+  | Transaction _ -> "Transaction"
   | Confirmation _ -> "Confirmation"
 
 (*
@@ -208,7 +236,7 @@ let already_received_message received_messages msg =
       network, the node set
       msg, the object to send
 
-    Returns: the set of nodes that didn't respond
+    Returns: the network without dead nodes
 *)
 let broadcast network msg =
   let didnt_respond = ref NodeSet.empty in
@@ -231,22 +259,9 @@ let broadcast network msg =
   in
 
   NodeSet.iter share network;
-  !didnt_respond
+  NodeSet.diff network !didnt_respond
 
-(*
-  Function: share_new_node
-  Broadcast the node info to the miners of the network.
-  Wallets are not contacted.
 
-  Arguments: 
-    network, the node set
-    (nodetype, new_ip, new_port), the new node info
-  
-  Returns:
-    The set of nodes that didn't respond
-*)
-let share_new_node network addr =
-  broadcast network (NetworkNewNode addr)
 
 (*
   Function: connect_to_miner
@@ -306,12 +321,3 @@ let show_peers miner_address =
       Unix.close s;
       n
   | _ -> raise (NotUnderstood "Expected NetworkMap.")
-
-(* 
-  Function: greet_new_node
-  Send the network map to the new node
-*)
-let greet_new_node network my_address out_chan =
-  output_value out_chan
-    (NetworkMap (NodeSet.add my_address network));
-  flush out_chan

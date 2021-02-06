@@ -32,6 +32,12 @@ Arg.parse speclist print_endline usage_msg
 *)
 let network = ref NodeSet.empty
 
+let blockchain = [ genesis ]
+
+let in_mining_block = ref None
+
+let mining_block_mutex = Mutex.create ()
+
 (*
   Will contain hash of every received messages
 *)
@@ -44,7 +50,43 @@ let print_new_network network =
   print_endline "New network:";
   print_NodeSet network
 
-let mining () = print_endline "Started miner ..."
+let mining () = ()
+
+(* 
+  Function: greet_new_node
+  Send the network map to the new node
+*)
+let greet_new_node my_address out_chan =
+  output_value out_chan (NetworkMap (NodeSet.add my_address !network));
+  flush out_chan
+
+(*
+  Function: share_new_node
+  Broadcast the node info to the miners of the network.
+  Wallets are not contacted.
+
+  Arguments: 
+    network, the node set
+    (nodetype, new_ip, new_port), the new node info
+*)
+let share_new_node addr =
+  let message = NetworkNewNode addr in
+  received_messages := add_message !received_messages message;
+  network := broadcast !network message
+
+let receive_transaction transaction =
+  print_endline "Adding transaction to current block and broadcast it";
+
+  Mutex.lock mining_block_mutex;
+  (match !in_mining_block with
+  | Some block -> block.transactions <- transaction :: block.transactions
+  | None ->
+      in_mining_block := Some (make_block (last_blockchain_id blockchain) []));
+  Mutex.unlock mining_block_mutex;
+
+  let message = Transaction transaction in
+  received_messages := add_message !received_messages message;
+  network := broadcast !network message
 
 (*
   Function process_client
@@ -71,19 +113,13 @@ let process_client my_address client_socket client_addr =
         (string_of_sockaddr miner_addr);
 
       (* Gives the network map to the new node *)
-      greet_new_node !network my_address out_chan;
+      greet_new_node my_address out_chan;
 
       (* Broadcast the new node id *)
       print_endline "Sharing new node to rest of the network.";
-      let didnt_respond = share_new_node !network miner_addr in
-      (* mark own message as seen to ignore it when it echoes *)
-      received_messages :=
-        add_message !received_messages (NetworkNewNode miner_addr);
+      share_new_node miner_addr;
 
       (* Update own network map *)
-      (* remove dead nodes *)
-      network := NodeSet.diff !network didnt_respond;
-      (* add new *)
       network := NodeSet.add miner_addr !network;
       print_new_network !network
   (* A new node has been registered in the network *)
@@ -94,21 +130,22 @@ let process_client my_address client_socket client_addr =
         received_messages := add_message !received_messages input_message;
         Printf.printf "Received new miner listening at %s.\n%!"
           (string_of_sockaddr miner_addr);
- 
+
         print_endline "Broadcasting new node";
-        let didnt_respond = share_new_node !network miner_addr in
+        share_new_node miner_addr;
 
         (* Update own network map *)
-        (* remove dead nodes *)
-        network := NodeSet.diff !network didnt_respond;
-        (* add new *)
         network := NodeSet.add miner_addr !network;
         print_new_network !network)
   | ShowPeers ->
       output_value out_chan (NetworkMap (NodeSet.add my_address !network));
       flush out_chan
   | Transaction t ->
-      Printf.printf "Received transaction of %f bitconneeeeect from %s to %s.\n%!" t.amount t.source t.destination
+      if already_received_message !received_messages input_message then
+        print_endline "Ignoring duplicated message"
+      else (
+        Printf.printf "Received %s.\n%!" (string_of_transaction t);
+        receive_transaction t)
   | _ -> print_endline "I don't understand the message, ignoring."
 
 let main () =

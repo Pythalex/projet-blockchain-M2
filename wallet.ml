@@ -37,7 +37,7 @@ let send_transaction my_name miner_addr =
   print_endline "What amount ? : ";
   let amount = read_float () in
 
-  let transaction = {source = my_name; destination = destination; amount = amount} in
+  let transaction = make_transaction my_name destination amount in
   let s = socket PF_INET SOCK_STREAM 0 in
   connect s miner_addr;
 
