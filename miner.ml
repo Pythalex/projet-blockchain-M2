@@ -1,7 +1,11 @@
 open Unix
 open Common
 
-exception Stop
+exception AlreadyMined
+
+exception NewTransaction
+
+exception EarlyStop
 
 (* -- network variables -- *)
 let name = ref ""
@@ -60,11 +64,20 @@ let print_new_network network =
   print_NodeSet network
 
 let rec puzzle block =
-  if blockchain_previous_id !blockchain >= block.id then raise Stop
-  else
-    let hash = block_fingerprint block in
-    if hash_is_solution hash !difficulty then block.nonce
-    else puzzle { block with nonce = block.nonce + 1 }
+  if blockchain_previous_id !blockchain >= block.id then raise AlreadyMined
+  else (
+    Mutex.lock mining_block_mutex;
+    (match !in_mining_block with
+    | Some b ->
+        if b.transactions <> block.transactions then (
+          Mutex.unlock mining_block_mutex;
+          raise NewTransaction)
+        else ()
+    | None -> raise EarlyStop);
+    Mutex.unlock mining_block_mutex);
+  let hash = block_fingerprint block in
+  if hash_is_solution hash !difficulty then block.nonce
+  else puzzle { block with nonce = block.nonce + 1 }
 
 let mining () =
   while true do
@@ -75,7 +88,7 @@ let mining () =
     let mb = !in_mining_block in
     Mutex.unlock mining_block_mutex;
 
-    (try
+    try
       match mb with
       | Some b ->
           print_endline "start mining";
@@ -97,13 +110,16 @@ let mining () =
           Mutex.unlock blockchain_mutex;
           print_endline (string_of_block (blockchain_last_block !blockchain))
       | None -> ()
-    with Stop ->
-      print_endline "Some miner mined the block before me.";
-      Mutex.lock mining_block_mutex;
-      in_mining_block := None;
-      Mutex.unlock mining_block_mutex;
-      print_endline (string_of_block (blockchain_last_block !blockchain)));
-
+    with
+    | AlreadyMined ->
+        print_endline "Other miner found nonce.";
+        Mutex.lock mining_block_mutex;
+        in_mining_block := None;
+        Mutex.unlock mining_block_mutex;
+        print_endline (string_of_block (blockchain_last_block !blockchain))
+    | NewTransaction ->
+        print_endline "New transaction arrived, start mining again..."
+    | EarlyStop -> print_endline "Mining stopped early."
   done
 
 (* 
@@ -133,13 +149,16 @@ let receive_transaction t =
 
   Mutex.lock mining_block_mutex;
   (match !in_mining_block with
-  | Some block -> in_mining_block := Some({block with transactions = t :: block.transactions})
+  | Some block ->
+      let new_block = { block with transactions = t :: block.transactions } in
+      in_mining_block := Some new_block;
+      print_endline (string_of_block new_block)
   | None ->
       in_mining_block :=
         Some
           (make_block
              (blockchain_previous_id !blockchain + 1)
-             [t]
+             [ t ]
              (blockchain_previous_hash !blockchain)));
   Mutex.unlock mining_block_mutex;
 
@@ -153,7 +172,6 @@ let receive_transaction t =
 *)
 let process_client my_address client_socket client_addr =
   (*let client_ip, client_port = extract_ip_port_from_sockaddr client_addr in*)
-
   let in_chan = in_channel_of_descr client_socket in
   let out_chan = out_channel_of_descr client_socket in
 
@@ -254,7 +272,6 @@ let main () =
 
   (* Main loop *)
   while true do
-
     (* client socket *)
     let client_socket, client_addr = accept s in
     let f (g, a, b, c) = g a b c in
