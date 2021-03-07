@@ -52,5 +52,14 @@ let authenticate tr pr root =
     x = root
 
 let () =
-  let a = Z.of_int 1 in
-  Z.print a
+  let merkle_tree = make ["8743b52063cd84097a65d1633f5c74f5"; "01dfae6e5d4d90d9892622325959afbe"; "f0fda58630310a6dd91a7d8f0a4ceda2"] in
+  let proof_t = proof merkle_tree 0 in 
+  (* let a = Z.of_int 1 in
+  Z.print a; *)
+  (*false*)
+  (* let is_in_tree = authenticate "f0fda58630310a6dd91a7d8f0a4ceda2" proof_t (hash_root merkle_tree) in  *)
+  (*true*)
+  let is_in_tree = authenticate "8743b52063cd84097a65d1633f5c74f5" proof_t (hash_root merkle_tree) in 
+  Printf.printf "Proof of first leaf : ";
+  List.iter (Printf.printf "%s ") proof_t;
+  Printf.printf " \n%b\n" is_in_tree
