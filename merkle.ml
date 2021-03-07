@@ -1,12 +1,12 @@
 type t = E | N of Z.t * t * t * int
 
 let empty = E
-let make_leaf x = N(hash x, E, E ,0)
+let make_leaf x = N(Z.of_int (Z.hash x), E, E ,0)
 let make_node t1 t2 =
   match t1, t2 with
   | N(x1, _, _ , lvl1), N(x2,_,_, lvl2) ->
     let lvl = max lvl1 lvl2 + 1 in
-    N(hash (Z.add x1 x2), t1, t2, lvl)
+    N(Z.of_int (Z.hash (Z.add x1 x2)), t1, t2, lvl)
   | _ -> assert false
 
 let rec fusion lt =
@@ -48,7 +48,7 @@ let authenticate tr pr root =
   let pr = List.map of_string pr in
   let x =
     List.fold_right
-    (fun h x -> hash (Z.add h x)) pr (hash tr) in
+    (fun h x -> (Z.of_int (Z.hash (Z.add h x)))) pr (Z.of_int (Z.hash tr)) in
     x = root
 
 let () =
