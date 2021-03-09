@@ -69,7 +69,7 @@ let of_string s = Z.of_string_base 16 s
   Get a list of string hashes, convert all hashes to Z big int,
   and returns a merkle tree from them.
 *)
-let make l =
+let make l = 
   let l = List.map of_string l in
   merkel_of_list (List.map make_leaf l)
 

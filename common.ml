@@ -139,7 +139,8 @@ let make_block id transactions prevhash =
   nonce = 0; 
   prevhash = prevhash; 
   hash = "";
-  merkle_root = Merkle.hash_root (Merkle.make (List.map hash transactions));
+  merkle_root = (try Merkle.hash_root (Merkle.make (List.map hash transactions)) 
+    with Not_found -> "");
   transactions = transactions}
 
 let genesis = make_block 0 [] ""
