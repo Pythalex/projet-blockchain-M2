@@ -12,5 +12,8 @@ common: common.ml
 merkle: merkle.ml
 	ocamlfind ocamlopt -linkpkg -package zarith merkle.ml
 
+merkle-test: merkle.ml
+	ocamlfind ocamlopt -o merkle-test -linkpkg -package zarith merkle.ml
+
 clean:
 	rm *.cmi *.cmo *.cmx miner wallet *.out

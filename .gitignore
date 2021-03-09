@@ -3,6 +3,7 @@
 *.cmx
 *.o
 *.aout
+*.out
 client
 server
 IntPairSet
