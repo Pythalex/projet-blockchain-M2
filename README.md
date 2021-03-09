@@ -1,5 +1,17 @@
 # projet-blockchain-M2
 
+## Requirements
+
+These third party packages are required to run this project
+
+- zarith
+
+    `opam install zarith`
+
+- hex
+
+    `opam install hex`
+
 ## Compilation
 
 Dans le terminal: `make`

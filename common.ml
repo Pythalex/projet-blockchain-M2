@@ -113,7 +113,10 @@ let string_of_transaction transaction =
   Format.sprintf "Transaction(id=%d) from '%s' to '%s' : %f%!" transaction.id transaction.source transaction.destination transaction.amount
 
 let hash x =
-  Digest.string (Marshal.to_string x [])
+  let h =  (Hex.show (Hex.of_string (Digest.bytes (Marshal.to_bytes x [])))) in
+  Printf.printf "Hashed : %s" h;
+  h 
+  
 
 (*
   Abstract representation of a blockchain block

@@ -162,7 +162,7 @@ let receive_transaction t =
   Mutex.lock mining_block_mutex;
   (match !in_mining_block with
   | Some block ->
-      let new_block = { block with transactions = t :: block.transactions } in
+      let new_block = make_block block.id (t :: block.transactions) block.prevhash in
       in_mining_block := Some new_block;
       print_endline (string_of_block new_block)
   | None ->

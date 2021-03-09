@@ -1,3 +1,4 @@
 S .
 PKG zarith
+PKG hex
 B +threads
