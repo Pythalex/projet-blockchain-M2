@@ -114,7 +114,7 @@ let string_of_transaction transaction =
 
 let hash x =
   let h =  (Hex.show (Hex.of_string (Digest.bytes (Marshal.to_bytes x [])))) in
-  Printf.printf "Hashed : %s" h;
+  (*Printf.printf "Hashed : %s\n" h;*)
   h 
   
 
@@ -187,6 +187,11 @@ let string_of_block block =
   Buffer.contents buffer (* returns the final string *)
 
 
+let string_of_blockchain blockchain =
+  let buffer = Buffer.create (42 * List.length blockchain) in
+  List.iter (fun b -> Buffer.add_string buffer (string_of_block b ^ "\n")) blockchain;
+  Buffer.contents buffer
+
 (*
   Function: hash_is_solution
   Indicates if the given hash starts with '0' * difficulty,
@@ -210,6 +215,7 @@ type message =
   | TransactionWaiting
   | TransactionNotExist
   | ShowBlockchain
+  | ShowBlockchainHeader
   | ShowPeers
   | Transaction of transaction
   | Confirmation of transaction
@@ -229,6 +235,7 @@ let message_literal msg =
   | TransactionWaiting -> "TransactionWaiting"
   | TransactionNotExist -> "TransactionNotExist"
   | ShowBlockchain -> "ShowBlockchain"
+  | ShowBlockchainHeader -> "ShowBlockchainHeader"
   | ShowPeers -> "ShowPeers"
   | Transaction _ -> "Transaction"
   | Confirmation _ -> "Confirmation"

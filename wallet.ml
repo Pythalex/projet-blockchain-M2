@@ -27,6 +27,8 @@ let mynodetype = Wallet
 
 let network = ref NodeSet.empty
 
+let blockchain_headers = ref [ genesis ]
+
 let print_new_network network =
   print_endline "New network:";
   print_NodeSet network
@@ -46,6 +48,22 @@ let send_transaction my_name miner_addr =
   flush out_chan;
   Unix.close s
 
+let show_blockchain_header miner_addr =
+  let s = socket PF_INET SOCK_STREAM 0 in
+  connect s miner_addr;
+
+  let in_chan = in_channel_of_descr s in
+  let out_chan = out_channel_of_descr s in
+
+  output_value out_chan ShowBlockchainHeader;
+  flush out_chan;
+
+  match input_value in_chan with
+  | BlockchainHeader b ->
+      Unix.close s;
+      b
+  | _ -> raise (NotUnderstood "Expected BlockchainHeader.")
+
 
 let main () =
   (* command argument check *)
@@ -56,18 +74,25 @@ let main () =
   let miner_addr = ADDR_INET (!server_ip, !server_port) in
 
   network := show_peers miner_addr;
-  Printf.printf "Réponse reçue de la part du miner distant\n%!";
+  Printf.printf "Réponse reçue de la part du miner distant\nNetwork: %!";
   print_NodeSet !network;
+  
+  blockchain_headers := show_blockchain_header miner_addr;
+  print_string "Blockchain : \n";
+  print_endline (string_of_blockchain !blockchain_headers);
 
   let usage = "Usage : help | Show peers (1) | Send transaction (2)" in
   print_endline usage;
-  while true do
-    print_string "> ";
-    match read_line () with
-      | "help" -> print_endline usage
-      | "1" -> print_NodeSet !network
-      | "2" -> send_transaction !name miner_addr
-      | _ -> print_endline "Command not understood."
-  done
+
+  try
+    while true do
+      print_string "> ";
+      match read_line () with
+        | "help" -> print_endline usage
+        | "1" -> print_NodeSet !network
+        | "2" -> send_transaction !name miner_addr
+        | _ -> print_endline "Command not understood."
+    done
+  with NotUnderstood e -> print_endline e
 
 let () = main ()

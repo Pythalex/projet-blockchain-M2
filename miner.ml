@@ -230,6 +230,9 @@ let process_client my_address client_socket client_addr =
   | ShowPeers ->
       output_value out_chan (NetworkMap (NodeSet.add my_address !network));
       flush out_chan
+  | ShowBlockchainHeader ->
+      output_value out_chan (BlockchainHeader (!blockchain));
+      flush out_chan
   | Transaction t ->
       if already_received_message !received_messages input_message then
         (*print_endline "Ignoring duplicated message"*)
