@@ -121,6 +121,7 @@ let authenticate tr pr root =
   x = root
 
 (* Tests *)
+(*
 let () =
   let merkle_tree = make ["8743b52063cd84097a65d1633f5c74f5"; "01dfae6e5d4d90d9892622325959afbe"; "f0fda58630310a6dd91a7d8f0a4ceda2"] in
   let proof_t = proof merkle_tree 1 in 
@@ -134,3 +135,4 @@ let () =
   List.iter (Printf.printf "%s ") proof_t;
   Printf.printf " \n%b\n" is_in_tree;
   Printf.printf " \n%b\n" (authenticate "01dfae6e5d4d90d9892622325959afbe" proof_t (hash_root merkle_tree))
+  *)

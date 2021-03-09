@@ -176,7 +176,7 @@ let blockchain_previous_hash blockchain =
 
 let string_of_block block =
   let buffer = Buffer.create 42 in
-  Buffer.add_string buffer (Format.sprintf "Block(ID = %d):\n    nonce = %d\n    transactions = {\n" block.id block.nonce);
+  Buffer.add_string buffer (Format.sprintf "Block(ID = %d):\n    nonce = %d\n    merkle_root = %s\n    transactions = {\n" block.id block.nonce block.merkle_root);
   let f trans = Buffer.add_string buffer ("        " ^ string_of_transaction trans ^ "\n") in
   List.iter f block.transactions;
   Buffer.add_string buffer "    }";
