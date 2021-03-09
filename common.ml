@@ -178,6 +178,16 @@ let blockchain_previous_hash blockchain =
     | x::b -> x.hash
     | _ -> ""
 
+(*
+  Function: headers_of_blockchain
+  Returns the headers only of the given blockchain.
+  i.e. returns the same blockchain but without the transactions list
+*)
+let rec headers_of_blockchain blockchain =
+  match blockchain with
+    | [] -> []
+    | block::bs -> {block with transactions = []} :: headers_of_blockchain bs
+
 let string_of_block block =
   let buffer = Buffer.create 42 in
   Buffer.add_string buffer (Format.sprintf "Block(ID = %d):\n    nonce = %d\n    merkle_root = %s\n    transactions = {\n" block.id block.nonce block.merkle_root);
@@ -186,10 +196,19 @@ let string_of_block block =
   Buffer.add_string buffer "    }";
   Buffer.contents buffer (* returns the final string *)
 
+let string_of_block_header block =
+  let buffer = Buffer.create 42 in
+  Buffer.add_string buffer (Format.sprintf "Block(ID = %d):\n    nonce = %d\n    merkle_root = %s\n" block.id block.nonce block.merkle_root);
+  Buffer.contents buffer (* returns the final string *)
 
 let string_of_blockchain blockchain =
   let buffer = Buffer.create (42 * List.length blockchain) in
   List.iter (fun b -> Buffer.add_string buffer (string_of_block b ^ "\n")) blockchain;
+  Buffer.contents buffer
+
+let string_of_blockchain_headers blockchain_headers =
+  let buffer = Buffer.create (42 * List.length blockchain_headers) in
+  List.iter (fun b -> Buffer.add_string buffer (string_of_block_header b ^ "\n")) blockchain_headers;
   Buffer.contents buffer
 
 (*

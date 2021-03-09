@@ -231,7 +231,7 @@ let process_client my_address client_socket client_addr =
       output_value out_chan (NetworkMap (NodeSet.add my_address !network));
       flush out_chan
   | ShowBlockchainHeader ->
-      output_value out_chan (BlockchainHeader (!blockchain));
+      output_value out_chan (BlockchainHeader (headers_of_blockchain !blockchain));
       flush out_chan
   | Transaction t ->
       if already_received_message !received_messages input_message then

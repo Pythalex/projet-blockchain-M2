@@ -79,7 +79,7 @@ let main () =
   
   blockchain_headers := show_blockchain_header miner_addr;
   print_string "Blockchain : \n";
-  print_endline (string_of_blockchain !blockchain_headers);
+  print_endline (string_of_blockchain_headers !blockchain_headers);
 
   let usage = "Usage : help | Show peers (1) | Send transaction (2) | Refresh blockchain (3)" in
   print_endline usage;
@@ -93,7 +93,7 @@ let main () =
         | "2" -> send_transaction !name miner_addr
         | "3" -> (blockchain_headers := show_blockchain_header miner_addr;
           print_string "Blockchain : \n";
-          print_endline (string_of_blockchain !blockchain_headers))
+          print_endline (string_of_blockchain_headers !blockchain_headers))
         | _ -> print_endline "Command not understood."
     done
   with NotUnderstood e -> print_endline e
