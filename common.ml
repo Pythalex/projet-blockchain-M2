@@ -112,6 +112,9 @@ let make_transaction s d a =
 let string_of_transaction transaction =
   Format.sprintf "Transaction(id=%d) from '%s' to '%s' : %f%!" transaction.id transaction.source transaction.destination transaction.amount
 
+let hash x =
+  Digest.string (Marshal.to_string x [])
+
 (*
   Abstract representation of a blockchain block
 *)
@@ -121,7 +124,8 @@ type block = {
   nonce : int;
   prevhash : string;
   hash : string;
-  
+  merkle_root : string;
+
   (* payload *)
   transactions : transaction list;
 }
@@ -135,6 +139,7 @@ let make_block id transactions prevhash =
   nonce = 0; 
   prevhash = prevhash; 
   hash = "";
+  merkle_root = Merkle.hash_root (Merkle.make (List.map hash transactions));
   transactions = transactions}
 
 let genesis = make_block 0 [] ""
