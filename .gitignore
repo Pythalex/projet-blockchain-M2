@@ -12,4 +12,5 @@ miner
 .vscode
 wallet
 merkle-test
+merkle
 parallel_mining_test

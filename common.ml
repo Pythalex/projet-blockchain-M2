@@ -117,6 +117,14 @@ let hash x =
   (*Printf.printf "Hashed : %s\n" h;*)
   h 
   
+(*
+  Function: find_transaction_by_id
+  Returns the transactions object from a list of transaction by looking for its id
+*)
+let rec find_transaction_by_id transactions id =
+  match transactions with
+    | [] -> raise Not_found
+    | x::l -> if x.id = id then x else find_transaction_by_id l id
 
 (*
   Abstract representation of a blockchain block
@@ -188,6 +196,20 @@ let rec headers_of_blockchain blockchain =
     | [] -> []
     | block::bs -> {block with transactions = []} :: headers_of_blockchain bs
 
+(*
+  Function: find_block_by_transaction
+  Returns the block in the blockchain in which appears the
+  given transaction.
+*)
+let rec find_block_by_transaction blockchain transaction =
+  match blockchain with
+    | [] -> raise Not_found
+    | x::l -> 
+        if List.exists (fun t -> t = transaction) x.transactions then
+          x
+        else
+          find_block_by_transaction l transaction
+
 let string_of_block block =
   let buffer = Buffer.create 42 in
   Buffer.add_string buffer (Format.sprintf "Block(ID = %d):\n    nonce = %d\n    merkle_root = %s\n    transactions = {\n" block.id block.nonce block.merkle_root);
@@ -219,7 +241,7 @@ let string_of_blockchain_headers blockchain_headers =
 let hash_is_solution hash difficulty =
   let hash_start = String.sub hash 0 difficulty in
   hash_start = String.make difficulty '0'
- 
+
 (*
   All types of messages used for communication between nodes in the network
 *)
@@ -230,7 +252,7 @@ type message =
   | Block of block
   | Blockchain of block list
   | BlockchainHeader of block list
-  | TransactionExist 
+  | TransactionExist of string list
   | TransactionWaiting
   | TransactionNotExist
   | ShowBlockchain
@@ -250,7 +272,7 @@ let message_literal msg =
   | Block _ -> "Block"
   | Blockchain _ -> "Blockchain"
   | BlockchainHeader _ -> "BlockchainHeader"
-  | TransactionExist -> "TransactionExist"
+  | TransactionExist _-> "TransactionExist"
   | TransactionWaiting -> "TransactionWaiting"
   | TransactionNotExist -> "TransactionNotExist"
   | ShowBlockchain -> "ShowBlockchain"
