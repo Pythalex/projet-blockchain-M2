@@ -116,11 +116,14 @@ let string_of_transaction transaction =
   Abstract representation of a blockchain block
 *)
 type block = {
+  (* header *)
   id : int;
-  mutable nonce : int;
+  nonce : int;
   prevhash : string;
-  mutable hash : string;
-  mutable transactions : transaction list;
+  hash : string;
+  
+  (* payload *)
+  transactions : transaction list;
 }
 
 (*
@@ -128,7 +131,11 @@ type block = {
   Creates a block with given message and id and nonce 0.
 *)
 let make_block id transactions prevhash =
-  { id = id; nonce = 0; prevhash = prevhash; hash = ""; transactions = transactions}
+  { id = id; 
+  nonce = 0; 
+  prevhash = prevhash; 
+  hash = "";
+  transactions = transactions}
 
 let genesis = make_block 0 [] ""
 

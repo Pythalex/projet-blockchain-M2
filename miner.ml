@@ -103,19 +103,18 @@ let mining () =
       match mb with
       | Some b ->
           print_endline "start mining";
-          b.nonce <- 0;
-          b.hash <- block_fingerprint b;
+          let block_to_mine = {b with hash = block_fingerprint b} in
 
-          let nonce = puzzle b in
-          b.nonce <- nonce;
+          let nonce = puzzle block_to_mine in
+          let block_mined = {block_to_mine with nonce = nonce} in
           Printf.printf "Found nonce = %d\n%!" nonce;
 
           Mutex.lock blockchain_mutex;
           Mutex.lock network_mutex;
           Mutex.lock mining_block_mutex;
 
-          blockchain := b :: !blockchain;
-          network := broadcast !network (Block b);
+          blockchain := block_mined :: !blockchain;
+          network := broadcast !network (Block block_mined);
           in_mining_block := None;
 
           Mutex.unlock mining_block_mutex;
