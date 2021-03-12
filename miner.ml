@@ -237,11 +237,12 @@ let confirm_transaction t out_chan =
     (output_value out_chan TransactionNotExist)
   else
     (print_endline "Creating proof";
+    let id = !block.id in
     let t_idx = find_transaction_index (!block.transactions) t in
     let t_hash = List.map hash !block.transactions in
     let tree = Merkle.make t_hash in
     let proof = Merkle.proof tree t_idx in
-    output_value out_chan (TransactionExist proof))
+    output_value out_chan (TransactionExist (proof, id)))
   ;
   flush out_chan
   

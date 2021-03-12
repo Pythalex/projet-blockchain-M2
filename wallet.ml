@@ -84,8 +84,14 @@ let confirm_transaction miner_addr =
   flush out_chan;
 
   (match input_value in_chan with
-  | TransactionExist proof ->
-      print_endline "Need to confirm proof"
+  | TransactionExist (proof, block_id) ->
+      let h = hash t in
+      let block = find_block_by_id !blockchain_headers block_id in
+      let is_in_tree = Merkle.authenticate h proof block.merkle_root in 
+      if is_in_tree then
+        print_endline ( "Transaction confirmed in block of ID=" ^ (string_of_int block.id) )
+      else
+        ()
   | TransactionNotExist ->
       print_endline "The transaction has not been found"
   | TransactionWaiting ->

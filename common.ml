@@ -210,6 +210,20 @@ let rec find_block_by_transaction blockchain transaction =
         else
           find_block_by_transaction l transaction
 
+(*
+  Function: find_block_by_transaction
+  Returns the block in the blockchain in which appears the
+  given transaction.
+*)
+let rec find_block_by_id blockchain id =
+  match blockchain with
+    | [] -> raise Not_found
+    | x::l -> 
+        if x.id = id then
+          x
+        else
+          find_block_by_id l id
+
 let string_of_block block =
   let buffer = Buffer.create 42 in
   Buffer.add_string buffer (Format.sprintf "Block(ID = %d):\n    nonce = %d\n    merkle_root = %s\n    transactions = {\n" block.id block.nonce block.merkle_root);
@@ -252,7 +266,7 @@ type message =
   | Block of block
   | Blockchain of block list
   | BlockchainHeader of block list
-  | TransactionExist of string list
+  | TransactionExist of string list * int (* (proof, block_id) *)
   | TransactionWaiting
   | TransactionNotExist
   | ShowBlockchain
