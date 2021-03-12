@@ -178,13 +178,13 @@ let receive_transaction t =
   received_messages := add_message !received_messages message;
   network := broadcast !network message
 
-let look_for_transaction_in_mining_block tid lock =
+let look_for_transaction_in_mining_block thash lock =
   let res = ref false in
   if lock then
     Mutex.lock mining_block_mutex;
   (match !in_mining_block with
     | Some block ->
-        if List.exists (fun t2 -> let _ = t2.source in tid = t2.id) block.transactions then
+        if List.exists (fun t -> hash t = thash) block.transactions then
           res := true
         else
           res := false
@@ -199,19 +199,18 @@ let get_mining_block () =
     Some b -> b
     | None -> raise Not_found
 
-let find_transaction_index transactions tid =
+let find_transaction_index transactions thash =
   let rec loop transactions t i =
     match transactions with
       | [] -> raise Not_found
-      | x::l -> 
+      | t::l -> 
         (* This is used in order to make ocaml map the parameters 
-        to transaction record type instead of the block record type *)
-        let _ = x.source in 
-        if x.id = tid then i else loop l tid i+1
+        to transaction record type instead of the block record type *) 
+        if hash t = thash then i else loop l thash i+1
   in
-  loop transactions tid 0
+  loop transactions thash 0
 
-let confirm_transaction tid out_chan =
+let confirm_transaction thash out_chan =
   
   let block = ref genesis in
   let inwaiting = ref false in
@@ -219,11 +218,11 @@ let confirm_transaction tid out_chan =
   
   (try
     (Mutex.lock mining_block_mutex;
-    if look_for_transaction_in_mining_block tid false then
+    if look_for_transaction_in_mining_block thash false then
       (inwaiting := true;
       found := true)
     else
-      (block := find_block_by_transaction !blockchain tid;
+      (block := find_block_by_transaction !blockchain thash;
       found := true));
     Mutex.unlock mining_block_mutex
   with
@@ -237,7 +236,7 @@ let confirm_transaction tid out_chan =
   else
     (print_endline "Creating proof";
     let id = !block.id in
-    let t_idx = find_transaction_index (!block.transactions) tid in
+    let t_idx = find_transaction_index (!block.transactions) thash in
     let t_hash = List.map hash !block.transactions in
     let tree = Merkle.make t_hash in
     let proof = Merkle.proof tree t_idx in
@@ -309,28 +308,23 @@ let process_client my_address client_socket client_addr =
         received_messages := add_message !received_messages input_message;
         Printf.printf "Received %s.\n%!" (string_of_transaction t);
         receive_transaction t)
-  | Confirmation tid ->
+  | Confirmation thash ->
+      Printf.printf "Received confirmation request for transaction of hash = %s.\n%!" thash;
+      confirm_transaction thash out_chan
+  | Block b ->
     if already_received_message !received_messages input_message then
-      (*print_endline "Ignoring duplicated message"*)
+      (*print_endline "Received duplicated block message broadcast, ignoring."*)
       ()
     else (
       received_messages := add_message !received_messages input_message;
-      Printf.printf "Received confirmation request for TID = %d.\n%!" tid;
-      confirm_transaction tid out_chan)
-  | Block b ->
-      if already_received_message !received_messages input_message then
-        (*print_endline "Received duplicated block message broadcast, ignoring."*)
-        ()
-      else (
-        received_messages := add_message !received_messages input_message;
-        Mutex.lock blockchain_mutex;
-        if b.id > blockchain_previous_id !blockchain then (
-          blockchain := b :: !blockchain;
-          print_endline "Received block and added it into blockchain")
-        else print_endline "Received block with invalid id, ignoring it";
-        Mutex.unlock blockchain_mutex;
+      Mutex.lock blockchain_mutex;
+      if b.id > blockchain_previous_id !blockchain then (
+        blockchain := b :: !blockchain;
+        print_endline "Received block and added it into blockchain")
+      else print_endline "Received block with invalid id, ignoring it";
+      Mutex.unlock blockchain_mutex;
 
-        network := broadcast !network input_message)
+      network := broadcast !network input_message)
   | _ ->
       (*print_endline "I don't understand the message, ignoring."*)
       ()

@@ -42,7 +42,7 @@ let send_transaction my_name miner_addr =
   let amount = read_float () in
 
   let transaction = make_transaction my_name destination amount in
-  Printf.printf "Transaction ID = %d\n" transaction.id;
+  Printf.printf "Transaction hash = %s\n" (hash transaction);
   my_transactions := transaction :: !my_transactions;
 
   let s = socket PF_INET SOCK_STREAM 0 in
@@ -70,19 +70,20 @@ let show_blockchain_header miner_addr =
   | _ -> raise (NotUnderstood "Expected BlockchainHeader.")
 
 let find_block_by_id_update_on_error block_id miner_addr =
-  try 
+  try (
     find_block_by_id !blockchain_headers block_id
+  )
   with Not_found -> (
     blockchain_headers := show_blockchain_header miner_addr;
     find_block_by_id !blockchain_headers block_id
   )
 
 let confirm_transaction miner_addr =
-  print_string "> Transaction ID = ";
-  let id = int_of_string (read_line ()) in
+  print_string "> Transaction hash = ";
+  let thash = read_line () in
 
   (try 
-    let _ = find_transaction_by_id !my_transactions id in ()
+    let _ = find_transaction_by_hash !my_transactions thash in ()
   with
     Not_found -> print_endline "Warning : No transaction was found with this ID.");
 
@@ -92,16 +93,14 @@ let confirm_transaction miner_addr =
   let in_chan = in_channel_of_descr s in
   let out_chan = out_channel_of_descr s in
 
-  output_value out_chan (Confirmation id);
+  output_value out_chan (Confirmation thash);
   flush out_chan;
 
   (match input_value in_chan with
   | TransactionExist (proof, block_id) -> (
       try
-        let t = find_transaction_by_id !my_transactions id in
-        let h = hash t in
         let block = find_block_by_id_update_on_error block_id miner_addr in
-        let is_in_tree = Merkle.authenticate h proof block.merkle_root in 
+        let is_in_tree = Merkle.authenticate thash proof block.merkle_root in 
         if is_in_tree then
           print_endline ( "Transaction confirmed in block of ID=" ^ (string_of_int block.id) )
         else
