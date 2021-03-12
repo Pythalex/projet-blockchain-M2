@@ -201,14 +201,14 @@ let rec headers_of_blockchain blockchain =
   Returns the block in the blockchain in which appears the
   given transaction.
 *)
-let rec find_block_by_transaction blockchain transaction =
+let rec find_block_by_transaction blockchain tid =
   match blockchain with
     | [] -> raise Not_found
     | x::l -> 
-        if List.exists (fun t -> t = transaction) x.transactions then
+        if List.exists (fun t -> let _ = t.source in t.id = tid) x.transactions then
           x
         else
-          find_block_by_transaction l transaction
+          find_block_by_transaction l tid
 
 (*
   Function: find_block_by_transaction
@@ -273,7 +273,7 @@ type message =
   | ShowBlockchainHeader
   | ShowPeers
   | Transaction of transaction
-  | Confirmation of transaction
+  | Confirmation of int (* transaction id *)
 
 (*
   Stringify of node communication messages

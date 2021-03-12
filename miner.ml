@@ -178,13 +178,13 @@ let receive_transaction t =
   received_messages := add_message !received_messages message;
   network := broadcast !network message
 
-let look_for_transaction_in_mining_block t lock =
+let look_for_transaction_in_mining_block tid lock =
   let res = ref false in
   if lock then
     Mutex.lock mining_block_mutex;
   (match !in_mining_block with
     | Some block ->
-        if List.exists (fun t2 -> t = t2) block.transactions then
+        if List.exists (fun t2 -> let _ = t2.source in tid = t2.id) block.transactions then
           res := true
         else
           res := false
@@ -199,7 +199,7 @@ let get_mining_block () =
     Some b -> b
     | None -> raise Not_found
 
-let find_transaction_index transactions t =
+let find_transaction_index transactions tid =
   let rec loop transactions t i =
     match transactions with
       | [] -> raise Not_found
@@ -207,12 +207,11 @@ let find_transaction_index transactions t =
         (* This is used in order to make ocaml map the parameters 
         to transaction record type instead of the block record type *)
         let _ = x.source in 
-        let _ = t.source in
-        if x.id = t.id then i else loop l t i+1
+        if x.id = tid then i else loop l tid i+1
   in
-  loop transactions t 0
+  loop transactions tid 0
 
-let confirm_transaction t out_chan =
+let confirm_transaction tid out_chan =
   
   let block = ref genesis in
   let inwaiting = ref false in
@@ -220,11 +219,11 @@ let confirm_transaction t out_chan =
   
   (try
     (Mutex.lock mining_block_mutex;
-    if look_for_transaction_in_mining_block t false then
+    if look_for_transaction_in_mining_block tid false then
       (inwaiting := true;
       found := true)
     else
-      (block := find_block_by_transaction !blockchain t;
+      (block := find_block_by_transaction !blockchain tid;
       found := true));
     Mutex.unlock mining_block_mutex
   with
@@ -238,7 +237,7 @@ let confirm_transaction t out_chan =
   else
     (print_endline "Creating proof";
     let id = !block.id in
-    let t_idx = find_transaction_index (!block.transactions) t in
+    let t_idx = find_transaction_index (!block.transactions) tid in
     let t_hash = List.map hash !block.transactions in
     let tree = Merkle.make t_hash in
     let proof = Merkle.proof tree t_idx in
@@ -310,14 +309,14 @@ let process_client my_address client_socket client_addr =
         received_messages := add_message !received_messages input_message;
         Printf.printf "Received %s.\n%!" (string_of_transaction t);
         receive_transaction t)
-  | Confirmation t ->
+  | Confirmation tid ->
     if already_received_message !received_messages input_message then
       (*print_endline "Ignoring duplicated message"*)
       ()
     else (
       received_messages := add_message !received_messages input_message;
-      Printf.printf "Received confirmation request for TID = %d.\n%!" t.id;
-      confirm_transaction t out_chan)
+      Printf.printf "Received confirmation request for TID = %d.\n%!" tid;
+      confirm_transaction tid out_chan)
   | Block b ->
       if already_received_message !received_messages input_message then
         (*print_endline "Received duplicated block message broadcast, ignoring."*)

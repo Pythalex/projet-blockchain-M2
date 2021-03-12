@@ -80,7 +80,11 @@ let find_block_by_id_update_on_error block_id miner_addr =
 let confirm_transaction miner_addr =
   print_string "> Transaction ID = ";
   let id = int_of_string (read_line ()) in
-  let t = find_transaction_by_id !my_transactions id in
+
+  (try 
+    let _ = find_transaction_by_id !my_transactions id in ()
+  with
+    Not_found -> print_endline "Warning : No transaction was found with this ID.");
 
   let s = socket PF_INET SOCK_STREAM 0 in
   connect s miner_addr;
@@ -88,12 +92,13 @@ let confirm_transaction miner_addr =
   let in_chan = in_channel_of_descr s in
   let out_chan = out_channel_of_descr s in
 
-  output_value out_chan (Confirmation t);
+  output_value out_chan (Confirmation id);
   flush out_chan;
 
   (match input_value in_chan with
   | TransactionExist (proof, block_id) -> (
       try
+        let t = find_transaction_by_id !my_transactions id in
         let h = hash t in
         let block = find_block_by_id_update_on_error block_id miner_addr in
         let is_in_tree = Merkle.authenticate h proof block.merkle_root in 
