@@ -2,7 +2,9 @@
 
 ## Requirements
 
-These third party packages are required to run this project
+Ce programme a été écrit en ocaml 4.10.0.
+
+Ces packages tiers sont requis pour compiler le programme.
 
 - zarith
 
