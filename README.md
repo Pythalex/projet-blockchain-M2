@@ -120,3 +120,11 @@ associé à une preuve est inexistant dans sa mémoire. L'opération est alors t
 Si le wallet est trop rapide dans sa demande, alors il reçoit un message d'attente.
 
 ![conftroprapide](https://i.imgur.com/G2xAL1a.png)
+
+
+## Annexe
+
+Nous avions tenté de lancer le programme sur plusieurs machines séparées. La logique du programme est censée autoriser ceci.
+Cependant nous n'avons pas réussi à faire fonctionner une communication TCP entre deux programmes Ocaml. En particulier
+les messages sont bien transmis entre les machines, mais la communication est bloquée (comme un blocage pare-feu, mais a priori ceci était censé être autorisé).
+Après de nombreux essais sans succès, il a été décidé de ne pas poursuivre. Le programme ne fonctionne donc qu'en local.
