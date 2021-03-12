@@ -69,6 +69,14 @@ let show_blockchain_header miner_addr =
       b
   | _ -> raise (NotUnderstood "Expected BlockchainHeader.")
 
+let find_block_by_id_update_on_error block_id miner_addr =
+  try 
+    find_block_by_id !blockchain_headers block_id
+  with Not_found -> (
+    blockchain_headers := show_blockchain_header miner_addr;
+    find_block_by_id !blockchain_headers block_id
+  )
+
 let confirm_transaction miner_addr =
   print_string "> Transaction ID = ";
   let id = int_of_string (read_line ()) in
@@ -84,14 +92,18 @@ let confirm_transaction miner_addr =
   flush out_chan;
 
   (match input_value in_chan with
-  | TransactionExist (proof, block_id) ->
-      let h = hash t in
-      let block = find_block_by_id !blockchain_headers block_id in
-      let is_in_tree = Merkle.authenticate h proof block.merkle_root in 
-      if is_in_tree then
-        print_endline ( "Transaction confirmed in block of ID=" ^ (string_of_int block.id) )
-      else
-        ()
+  | TransactionExist (proof, block_id) -> (
+      try
+        let h = hash t in
+        let block = find_block_by_id_update_on_error block_id miner_addr in
+        let is_in_tree = Merkle.authenticate h proof block.merkle_root in 
+        if is_in_tree then
+          print_endline ( "Transaction confirmed in block of ID=" ^ (string_of_int block.id) )
+        else
+          print_endline "Error : The proof check wasn't successful."
+      with
+        Not_found -> print_endline "Error : The block of proof could not be found."
+  )
   | TransactionNotExist ->
       print_endline "The transaction has not been found"
   | TransactionWaiting ->
