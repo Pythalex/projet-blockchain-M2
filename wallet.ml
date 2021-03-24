@@ -31,10 +31,23 @@ let blockchain_headers = ref [ genesis ]
 
 let my_transactions = ref []
 
+(*
+  Function: print_new_network
+  Prints the miner network
+*)
 let print_new_network network =
   print_endline "New network:";
   print_NodeSet network
 
+(*
+  Function: send_transaction
+  Ask user to input transaction destination and amount
+  and send the transaction to the miner at miner_addr.
+
+  Arguments:
+    my_name, the name of the current wallet
+    miner_addr, listening address of the remote miner
+*)
 let send_transaction my_name miner_addr =
   print_endline "To who ? : ";
   let destination = read_line () in
@@ -53,6 +66,10 @@ let send_transaction my_name miner_addr =
   flush out_chan;
   Unix.close s
 
+(*
+  Function show_blockchain_header
+  Ask the remote miner at miner_addr for the block header chain.
+*)
 let show_blockchain_header miner_addr =
   let s = socket PF_INET SOCK_STREAM 0 in
   connect s miner_addr;
@@ -69,6 +86,15 @@ let show_blockchain_header miner_addr =
       b
   | _ -> raise (NotUnderstood "Expected BlockchainHeader.")
 
+(*
+  Function: find_block_by_id_update_on_error
+  Look for a block in the chain by its id. If none is found, update
+  the blockchain by asking to remote miner at miner_addr.
+
+  Arguments:
+    block_id, the id of the block to find
+    miner_addr, the remote miner listening address
+*)
 let find_block_by_id_update_on_error block_id miner_addr =
   try (
     find_block_by_id !blockchain_headers block_id
@@ -78,6 +104,15 @@ let find_block_by_id_update_on_error block_id miner_addr =
     find_block_by_id !blockchain_headers block_id
   )
 
+(*
+  Function: confirm_transaction
+  Ask the user for a transaction hash to confirm and ask the remote
+  miner at miner_addr for a merkle proof. Then print the confirmation 
+  or the error.
+
+  Arguments:
+    miner_addr, the remote miner listening address
+*)
 let confirm_transaction miner_addr =
   print_string "> Transaction hash = ";
   let thash = read_line () in
@@ -116,6 +151,10 @@ let confirm_transaction miner_addr =
 
   Unix.close s
 
+(*
+  Function: main
+  Infinite loop of reading user input in the terminal.
+*)
 let main () =
   (* command argument check *)
   if !server_port = 0 || !name = "" then (
