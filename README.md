@@ -126,6 +126,24 @@ Si le wallet est trop rapide dans sa demande, alors il reçoit un message d'atte
 
 ## Annexe
 
+1) Blockchain concurrente
+
+Notre blockchain ne gère pas le problème des blockchains concurrentes pour la raison suivante : A cause de notre implémentation du
+système d'envoi/réception des messages entre les mineurs, un mineur ne sait pas qui lui parle. Ceci est dû au fait que l'adresse
+ip/port d'un mineur lorsqu'il envoie un message en mode client n'est pas son adresse d'écoute. Ainsi, lorsqu'un mineur reçoit un
+bloc dont l'id est supérieur à mon_id_courant + 1, il ne peut pas demander la blockchain entière au mineur spécifique qui lui a
+envoyé le bloc.
+Une manière de résoudre ce problème aurait été d'ajouter une interface à tout message de la forme : 
+{
+    type_node : Miner/Wallet, le type de noeud du client
+    addr_listen : sockaddr, l'ip/port d'écoute du client
+    message : message, l'objet de type 'message' qui représente l'objet ou la question transmis
+}
+Avec cette interface, le mineur qui reçoit un bloc d'une chaine concurrente avancée aurait pu demander au mineur dont l'ip/port
+est transmis dans le message la blockchain entière.
+
+2) Réseau
+
 Nous avions tenté de lancer le programme sur plusieurs machines séparées. La logique du programme est censée autoriser ceci.
 Cependant nous n'avons pas réussi à faire fonctionner une communication TCP entre deux programmes Ocaml. En particulier
 les messages sont bien transmis entre les machines, mais la communication est bloquée (comme un blocage pare-feu, mais a priori ceci était censé être autorisé).
