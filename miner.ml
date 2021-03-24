@@ -156,6 +156,14 @@ let share_new_node addr =
   received_messages := add_message !received_messages message;
   network := broadcast !network message
 
+(* 
+  Function: receive_transaction
+  Add the given transaction in the block to be mined and broadcast it
+  among the network.
+
+  Arguments:
+    t, the wallet transaction
+*)
 let receive_transaction t =
   print_endline "Adding transaction to current block and broadcast it";
 
@@ -178,6 +186,15 @@ let receive_transaction t =
   received_messages := add_message !received_messages message;
   network := broadcast !network message
 
+(*
+  Function: look_for_transaction_in_mining_block
+  Indicates if the given transaction hash is found in the transaction
+  list of the block being mined.
+
+  Arguments:
+    thash, hash of a transaction object
+    lock, whether to use the mutex lock on the mining block
+*)
 let look_for_transaction_in_mining_block thash lock =
   let res = ref false in
   if lock then
@@ -194,11 +211,25 @@ let look_for_transaction_in_mining_block thash lock =
     Mutex.unlock mining_block_mutex;
   !res
 
+(*
+  Function: get_mining_block
+  Get the mining block contained in the Option type object representing
+  the mining block. 
+*)
 let get_mining_block () =
   match !in_mining_block with
     Some b -> b
     | None -> raise Not_found
 
+(*
+  Function: find_transaction_index
+  Returns the transaction index of the transaction given
+  its hash in the given transaction list.
+
+  Arguments:
+    transactions, the list of transactions
+    thash, the hash of the transaction to look for
+*)
 let find_transaction_index transactions thash =
   let rec loop transactions t i =
     match transactions with
@@ -210,6 +241,21 @@ let find_transaction_index transactions thash =
   in
   loop transactions thash 0
 
+(*
+  Function: confirm_transaction
+  Returns a merkle proof for the given transaction if it
+  exists in a block of the blockchain.
+
+  Arguments:
+    thash, hash of the transaction to confirm
+    out_chan, out communication channel to the wallet
+
+  Note:
+    returns:
+    - TransactionNotExist if the transaction hash is not found in blockchain
+    - TransactionWaiting if the transaction is in the block being currently mined
+    - TransactionExist (proof, block_id) if the transaction is found in a block
+*)
 let confirm_transaction thash out_chan =
   
   let block = ref genesis in
